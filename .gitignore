@@ -1,0 +1,4 @@
+# Generated locally from the game data (dev-tools/make_itemlist.py); it is the game's own text.
+ItemList.csv
+node_modules/
+*.log
