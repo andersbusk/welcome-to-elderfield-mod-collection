@@ -86,6 +86,8 @@ Every number is in a `CONFIG` block at the top of the mod's `.js` file. Edit it 
 
 [docs/MODDING_MAP.md](docs/MODDING_MAP.md) describes how the game and its mod loader work and how these mods are built.
 
+[docs/ItemList.csv](docs/ItemList.csv) lists every item, weapon and armor with its ID, for use in the mods' settings.
+
 To work on a mod without reinstalling after every edit, link the game to this folder instead of copying:
 
 ```bat

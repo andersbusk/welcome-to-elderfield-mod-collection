@@ -132,7 +132,8 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
 - Quality tiers are separate item IDs with the same name (e.g. Wheat 901, 1094, 1098, 1102), linked by the generic tag.
 - ~1340 entries are placeholders (`Empty`, blank, `=====Section=====`, `TEST...`). Real items carry the `all` category.
 - `python dev-tools\make_itemlist.py "<game folder>" ItemList.csv` writes a list of every item, weapon and armor
-  with its ID. The list is not kept in this repository because it is the game's own text.
+  with its ID. `docs/ItemList.csv` is a committed copy: IDs, names, prices and categories, without the description
+  text (that is the game's own writing; add `--descriptions` to make a local copy that has it).
 
 ### Crafting (CGMZ_Crafting)
 - 510 recipes in plugin param `Recipes`. Fields: `Name`, `Products`, `Ingredients`, `Tools`, `Profession`

@@ -23,8 +23,7 @@
  * folder to "!CheapKiosk") and the kiosk is back to selling slime for 30 gold.
  *
  * Edit the CONFIG section to change the shop, price, or what is included.
- * Item IDs are the "id" values in the game's data/Items.json. A readable list can be made
- * with:  python dev-tools/make_itemlist.py "<game folder>" ItemList.csv
+ * Item IDs are listed in docs/ItemList.csv of the mod collection (the "id" column).
  */
 
 (() => {

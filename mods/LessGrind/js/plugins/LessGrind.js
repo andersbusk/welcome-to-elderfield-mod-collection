@@ -26,9 +26,8 @@
  * save as normal game progress.
  *
  * Only the CONFIG section needs editing. An ingredient is [itemId, amount];
- * item IDs are the "id" values in the game's data/Items.json (e.g. 91 = Iron Bar, 75 = Wood,
- * 450 = Copper Bar). A readable list can be made with:
- *   python dev-tools/make_itemlist.py "<game folder>" ItemList.csv
+ * item IDs are listed in docs/ItemList.csv of the mod collection (e.g. 91 = Iron Bar,
+ * 75 = Wood, 450 = Copper Bar).
  */
 
 (() => {
