@@ -1,0 +1,4 @@
+* text=auto eol=lf
+# Batch files must keep Windows line endings, also inside a downloaded ZIP.
+*.cmd -text
+*.bat -text

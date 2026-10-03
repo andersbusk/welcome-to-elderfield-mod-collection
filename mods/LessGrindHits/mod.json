@@ -1,0 +1,7 @@
+{
+  "name": "Less Grind Hits - fewer swings for pickaxe, axe and scythe",
+  "author": "Anders",
+  "version": "1.2.0",
+  "description": "Fewer swings for pickaxe, axe and scythe. Pickaxe: nothing above 6 swings, plain stone in 1, better pickaxes help in proportion to tier. Axe: nothing above 4. Scythe: nothing above 2. For axe and scythe every tier above the minimum halves the swings. Minimum tool tiers are unchanged. Also makes the game use the best axe you carry. Edit the CONFIG block in js/plugins/LessGrindHits.js.",
+  "priority": 50
+}
