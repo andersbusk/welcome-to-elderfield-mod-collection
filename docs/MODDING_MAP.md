@@ -14,7 +14,7 @@ The game folder is found by the manager; `elderfield-mods game` prints it. A typ
 ## 1. How mods in this collection are built
 
 - Every mod folder has a `README.md` that says what the mod does, its settings and what it means for the save.
-  Keep it in step with the mod; tables of numbers in it are checked by the tests where possible.
+  Keep it in step with the mod: the swing tables in `LessGrindHits/README.md` mirror what `test_lessgrindhits.js` prints.
 - Mods live in `mods\<Name>\` as separate folders, one concern per mod. Do not edit game files.
   The single exception already made: the loader flag in `js\plugins.js` (section 3).
 - Do not change item database values (prices etc.) to get an effect. Override behaviour instead.
