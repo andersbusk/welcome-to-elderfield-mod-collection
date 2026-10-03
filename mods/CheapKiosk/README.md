@@ -29,6 +29,8 @@ Items of different quality share a name in this game, so some entries appear fou
 - `SORT_ALPHABETICALLY`: A to Z, or database order.
 - `SHOP_TABS`: which category tabs to show.
 
+Item IDs for the settings are in [docs/ItemList.csv](../../docs/ItemList.csv).
+
 ## Your save
 
 Item prices are not touched, so selling prices and every other shop stay as they were.

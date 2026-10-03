@@ -30,6 +30,8 @@ Everything is in the `CONFIG` block at the top of `js/plugins/LessGrind.js`, wit
 - `TROUGH_STEP`, `TROUGH_COST_WOOD`, `TROUGH_COST_STONE`, `TROUGH_COST_GOLD`, `TROUGH_RETROACTIVE`.
 - `COFFEE_HOURS`, `COFFEE_SPEED`.
 
+Item IDs for the settings are in [docs/ItemList.csv](../../docs/ItemList.csv).
+
 ## Your save
 
 Nothing new is stored in the save. Costs and timers are changed in memory each time the game starts, so removing the mod puts everything back.

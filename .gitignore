@@ -1,4 +1,5 @@
-# Generated locally from the game data (dev-tools/make_itemlist.py); it is the game's own text.
-ItemList.csv
+# A local list made with --descriptions carries the game's own description text; keep it out.
+# (docs/ItemList.csv, without descriptions, is committed.)
+/ItemList.csv
 node_modules/
 *.log
