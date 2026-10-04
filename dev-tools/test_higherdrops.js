@@ -19,7 +19,8 @@ const EXPECT = {
     "Iron Ore": [3, 8], "Dense Iron": [6, 14],
     "Gold Ore": [2, 4], "Dense Gold": [4, 8],
     "Salt Ore": [2, 3], "Verdite Ore": [2, 4], "Green Crystal": [2, 5], "Void Crystal Ore": [2, 3],
-    "Crimson Ore": [1, 2], "Platinum Ore": [1, 2], "Dense Black Iron Ore Large": [1, 2]
+    "Crimson Ore": [1, 2], "Platinum Ore": [1, 2], "Dense Black Iron Ore Large": [1, 2],
+    "Rock": [1, 4], "Big Rock": [15, 25]
 };
 const items = readJson("Items.json");
 const baseName = n => n.replace(/[ _]?\d+$/, "").trim();
@@ -62,10 +63,14 @@ for (let e = 0; e < original.events.length; e++) {
             const want = EXPECT[name];
             if (!want) { fail(`${a.name}: changed but not in the agreed table`); continue; }
             const got = amountOf(after);
-            if (!got || got[0] !== want[0] || got[1] !== want[1]) fail(`${a.name}: expected ${show(want)}, got ${JSON.stringify(after)}`);
+            const was = amountOf(before);
+            const floor = [Math.max(want[0], was[0]), Math.max(want[1], was[1])];   // never below the game's own amount
+            if (!got || got[0] !== floor[0] || got[1] !== floor[1]) fail(`${a.name}: expected ${show(floor)}, got ${JSON.stringify(after)}`);
             const drop = la.find(c => c.code === 122 && c.parameters[0] === 30 && c.parameters[3] === 0);
-            if (!seen[name]) seen[name] = { drop: drop ? items[drop.parameters[4]].name : "?", before: amountOf(before), after: got, templates: 0 };
-            seen[name].templates++;
+            const key = name + (name === "Rock" ? (was[0] === 1 ? " (most areas)" : " (Catacombs mines)") : "");
+            if (!seen[key]) seen[key] = { drop: drop ? items[drop.parameters[4]].name : "?", before: was, after: got, templates: 0 };
+            seen[key].templates++;
+            seen[name] = seen[name] || seen[key];
         }
     }
     // every template named in the table must have been changed (unless it already had that amount)
@@ -73,7 +78,8 @@ for (let e = 0; e < original.events.length; e++) {
 for (const name of Object.keys(EXPECT)) if (!seen[name]) fail(`"${name}" from the table was not found on the spawn map`);
 
 realLog("rock".padEnd(28) + "drops".padEnd(18) + "unmodded".padEnd(10) + "modded".padEnd(8) + "average      templates");
-for (const name of Object.keys(EXPECT)) {
+for (const name of Object.keys(seen)) {
+    if (name === "Rock") continue;                 // shown per area below
     const s = seen[name];
     if (!s) continue;
     const avg = r => (r[0] + r[1]) / 2;
@@ -84,7 +90,7 @@ for (const name of Object.keys(EXPECT)) {
 realLog(`\ncommands changed on the spawn map: ${changedCmds}`);
 
 // ---- things that must stay untouched ----
-const untouched = ["Dense Iron Ore Large", "Dense Gold Ore Large", "Rock 1", "Small Rock 1", "Big Rock", "Small Moon Crystal", "Large Moon Crystal", "Gem Node t1", "Damp Rock 1", "Clutter1 Crate"];
+const untouched = ["Dense Iron Ore Large", "Dense Gold Ore Large", "Small Rock 1", "Small Moon Crystal", "Large Moon Crystal", "Gem Node t1", "Damp Rock 1", "Clutter1 Crate"];
 for (const n of untouched) {
     const i = original.events.findIndex(ev => ev && ev.name === n);
     if (i < 0) { fail(`template "${n}" not found (test needs updating)`); continue; }

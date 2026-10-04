@@ -1,6 +1,6 @@
 # HigherDrops
 
-Ore rocks drop more pieces per rock.
+Ore rocks and plain stone drop more pieces per rock.
 
 In the unmodded game Coal Ore drops 3 to 8 pieces, while nearly every other ore drops exactly 1.
 This mod gives the other ores a range too, and raises coal.
@@ -24,11 +24,16 @@ This mod gives the other ores a range too, and raises coal.
 | Crimson Ore | Crimson Ore | 1 | 1-2 |
 | Platinum Ore | Platinum Ore | 1 | 1-2 |
 | Dense Black Iron Ore Large | Blackiron Ore | 1 | 1-2 |
+| Rock (plain stone) | Stone | 1 | 1-4 |
+| Rock in the Catacombs mines | Stone | 2 | 2-4 |
+| Big Rock | Stone | 10 | 15-25 |
 
 The game picks a whole number in the range each time a rock breaks.
 Its own "2x Items!" mining bonus still applies on top.
 
-**Unchanged:** the large dense iron and gold rocks (1 Dense Iron Ore or Dense Gold Ore each), plain stone, the magic crystals (Death, Deep, Dream, Ghost, Light, Moon), gem nodes, Damp Rock, breakable clutter, trees and grass.
+A rock never drops less than in the unmodded game. Where the game's own amount is higher than the table says, the game's number is kept, which is why the Catacombs stone starts at 2.
+
+**Unchanged:** the large dense iron and gold rocks (1 Dense Iron Ore or Dense Gold Ore each), Small Rock (1 Stone), the magic crystals (Death, Deep, Dream, Ghost, Light, Moon), gem nodes, Damp Rock, breakable clutter, trees and grass.
 
 ## Settings
 

@@ -57,10 +57,17 @@
         "Void Crystal Ore":           [2, 3],     // 1
         "Crimson Ore":                [1, 2],     // 1
         "Platinum Ore":               [1, 2],     // 1
-        "Dense Black Iron Ore Large": [1, 2]      // 1
+        "Dense Black Iron Ore Large": [1, 2],     // 1
+
+        // --- Stone ---
+        "Rock":                       [1, 4],     // 1 (2 in the Catacombs mines, which become 2-4)
+        "Big Rock":                   [15, 25]    // 10
     };
+    // A rock never drops less than in the unmodded game: if the game's own
+    // amount is higher than a number here, the game's number is used.
+    //
     // Left at the game's amounts unless added above: Dense Iron Ore Large and
-    // Dense Gold Ore Large (1 each), plain stone (Rock, Small Rock, Big Rock),
+    // Dense Gold Ore Large (1 each), Small Rock (1),
     // the magic crystals (Small / Large ... Crystal), gem
     // nodes, Damp Rock, breakable clutter, trees and grass.
     // ========================================================================
@@ -100,9 +107,15 @@
                 for (const cmd of list) {
                     const p = cmd.parameters;
                     if (cmd.code === 122 && p[0] === VAR_AMOUNT && p[1] === VAR_AMOUNT && p[2] === 0 && (p[3] === 0 || p[3] === 2)) {
-                        cmd.parameters = range[0] === range[1]
-                            ? [VAR_AMOUNT, VAR_AMOUNT, 0, 0, range[0]]
-                            : [VAR_AMOUNT, VAR_AMOUNT, 0, 2, range[0], range[1]];
+                        // Never below what the game itself gives for this template.
+                        const gameMin = Number(p[4]) || 0;
+                        const gameMax = p[3] === 2 ? (Number(p[5]) || gameMin) : gameMin;
+                        const min = Math.max(range[0], gameMin);
+                        const max = Math.max(range[1], gameMax, min);
+                        if (min === gameMin && max === gameMax) continue;      // already that amount
+                        cmd.parameters = min === max
+                            ? [VAR_AMOUNT, VAR_AMOUNT, 0, 0, min]
+                            : [VAR_AMOUNT, VAR_AMOUNT, 0, 2, min, max];
                         changed++;
                     }
                 }
