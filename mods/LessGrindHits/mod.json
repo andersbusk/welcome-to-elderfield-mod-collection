@@ -1,7 +1,7 @@
 {
-  "name": "Less Grind Hits - fewer swings for pickaxe, axe and scythe",
+  "name": "Less Grind Hits - fewer swings, faster tree fall",
   "author": "Anders",
-  "version": "1.2.0",
-  "description": "Fewer swings for pickaxe, axe and scythe. Pickaxe: nothing above 6 swings, plain stone in 1, better pickaxes help in proportion to tier. Axe: nothing above 4. Scythe: nothing above 2. For axe and scythe every tier above the minimum halves the swings. Minimum tool tiers are unchanged. Also makes the game use the best axe you carry. Edit the CONFIG block in js/plugins/LessGrindHits.js.",
+  "version": "1.4.0",
+  "description": "Fewer swings for pickaxe, axe and scythe. Pickaxe: nothing above 6 swings, plain stone in 1, better pickaxes help in proportion to tier. Axe: nothing above 4. Scythe: nothing above 2. For axe and scythe every tier above the minimum halves the swings. Minimum tool tiers are unchanged. Felled trees fall in about 1 second instead of 2.2, and you can walk away while they fall. Also makes the game use the best axe you carry. Edit the CONFIG block in js/plugins/LessGrindHits.js.",
   "priority": 50
 }

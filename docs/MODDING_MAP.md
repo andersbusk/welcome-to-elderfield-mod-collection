@@ -174,11 +174,28 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
   events (CE 2865 and friends). Templates are read live from the spawn map (`$dataSpawnMap`, loaded through
   `DataManager.loadDataFile`, so `onLoad` sees it), which means a patched template also applies to rocks
   already spawned. Print everything with `dev-tools/list_drops.py`.
+- Forage picked by hand (Herb, Leaf Pile, Bloodberry, the mushrooms, ...) works the same way: a spawn-map template
+  sets V30 / V31 and calls CE 865 `Check and Harvest Item` (after CE 912 crouch, CE 900 shake, CE 2338 pop and
+  CE 777 `Add Forage Bonus Items`, the foraging 2x roll). Nearly all give 1; Herb and the red and green mushroom
+  1-2, Sunflower 1-3, Snow Pearls 2-3, Wild Herbs 2-4. `dev-tools/list_drops.py` lists them under "by hand".
 - The profession perk "MiningPerk7 +1 pickaxe damage" is not referenced by any event or plugin (no effect found).
 - **Axe and scythe use the identical mechanism**: CE 906 `Check Axe and Chop Tree`, CE 978 `Check Axe and Chop Wood`,
   CE 984 `Check Scythe and Cut Grass`, each with `SV: A += <tier variable>` then `A >= SV: B`. One map event
   (map 156 `Hardwood4`) carries its own copy of the axe damage command. Trees: tier 2 health 11-15, tier 3 22-30,
   tier 4 36, tier 5 32. Grass: health 4.
+- Felling a tree: CE 902 `Swing Axe` -> CE 903 `Fell Tree + Give item` -> CE 908 `Tree Fall Anim` -> CE 909 `left` or
+  CE 910 `right`. The fall is four loops of `rotate(V15)`, `V15 -=/+= step` (1, 2, 2, 3), `Wait` (3, 3, 2, 2) until
+  the angle passes 15, 30, 65, 89: 119 frames, then Shake Screen with wait (15 frames). V15 `Math` is a shared scratch
+  variable. A parallel failsafe, CE 921 `Tree Fall Timer` (switch 621), waits 120 frames and then forces V15 to 100
+  or -90 if switch 622 / 623 is still on. Vanilla bug: CE 910 ends with switch 622 ON instead of OFF, so that write
+  happens after every right-hand fall. `dev-tools/list_waits.py <ids>` prints where an event spends its frames.
+- Why the player is locked during an event: `Game_Player.canMove` returns false while `$gameMap.isEventRunning()`
+  (aliased by DK_Disable_Player_Movement, EliMZ_CameraManager, MasterLoadingFade, WTE_PocketEvents_PlacementSecurity;
+  input goes through WTE_TurnInPlace's `moveByInput`). Starting things is gated separately: `updateNonmoving`,
+  `startMapEvent`, the menu, and WTE_UniversalInteraction's `wteIsMeaningfulEventRunning` all ask `isEventRunning`
+  themselves. So walking can be freed during one event without letting anything new start. The tool swing calls
+  `GALV_CharacterAnimationsMZ.animOff` and only `animOn` at the very end of CE 902; with it off the player keeps the
+  idle row of the sprite sheet while moving (`Galv.CA.animStatus(true)` turns it back on).
 - To change swings without touching saved health values, replace the damage command's operand with a script
   (`[24,24,1,4,"..."]`). Inside it `this` is the interpreter: `this.getTargetMapIdSelfVariable()`,
   `this.getTargetEventIdSelfVariable()`, `$gameVariables.selfValue([map, event, 25])` for health, and
@@ -251,8 +268,8 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
 | Mod | File | What it does |
 |---|---|---|
 | LessGrind | `LessGrind.js` | Tool upgrades need 1 of each original ingredient (`TOOL_UPGRADE_COST`); Greater Offering of Rain = 1 Wheat; Preserving Barrel = 1 Wood; barrel and keg 1 day, cask 1 day per stage, off-by-one fix; trough upgrade 15 Wood, 15 Stone, 500 gold, +16; coffee 24 h and speeds 4.5 / 5.0 / 5.5 |
-| LessGrindHits | `LessGrindHits.js` | Swings for pickaxe, axe, scythe. Per tool: `maxSwings` (pickaxe 6, axe 4, scythe 2), `upgrade` (`proportional` for pickaxe = damage by tier as vanilla; `halve` for axe and scythe = each tier above the minimum halves the swings), a `toughest` table (health of the toughest thing per minimum tier, which takes maxSwings with that tier; the rest scale by health) and `overrides` by event name (plain `Rock N` = 1, Small Rock 4/2/2/1/1, Big Rock -/-/5/3/2). The user tunes these by reviewing tables; print them with `test_lessgrindhits.js`. Tier gates unchanged. Uses the best axe carried. Exposes `window.LessGrindHits` (`damage`, `swingsFor`, `bestTier`) |
-| HigherDrops | `HigherDrops.js` | Ore rocks drop more: a `DROPS` table of template name -> `[min, max]` replaces the `Amount` line on the rock templates (coal 8-34, copper 2-3, iron 3-8, gold 2-4, dense rocks scaled up, rare ores 1-2, plain `Rock` 1-4, `Big Rock` 15-25, weeds from `Grass` 2-6 and `Big Grass` 8-16; any pickaxe, axe or scythe template can be listed). Never below the game's own amount for a template. Magic crystals and gem nodes untouched |
+| LessGrindHits | `LessGrindHits.js` | Swings for pickaxe, axe, scythe. Per tool: `maxSwings` (pickaxe 6, axe 4, scythe 2), `upgrade` (`proportional` for pickaxe = damage by tier as vanilla; `halve` for axe and scythe = each tier above the minimum halves the swings), a `toughest` table (health of the toughest thing per minimum tier, which takes maxSwings with that tier; the rest scale by health) and `overrides` by event name (plain `Rock N` = 1, Small Rock 4/2/2/1/1, Big Rock -/-/5/3/2). The user tunes these by reviewing tables; print them with `test_lessgrindhits.js`. Tier gates unchanged. Uses the best axe carried. `TREE_FALL` shortens the felling animation (waits per phase [2, 1, 1, 1] instead of [3, 3, 2, 2], no wait for the shake: 134 -> 63 frames), turns switch 622 off at the end of the right-hand fall, and lets the player walk from the start of the fall until the tree's event ends: `Game_Player.canMove` is aliased and, only inside that call, `Game_Map.isEventRunning` answers false; `Galv.CA.animStatus(true)` is called when the fall starts. Exposes `window.LessGrindHits` (`damage`, `swingsFor`, `bestTier`) |
+| HigherDrops | `HigherDrops.js` | Ore rocks and forage give more: a `DROPS` table of template name -> `[min, max]` replaces the `Amount` line on the rock templates (coal 7-31, copper 2-3, iron 3-8, gold 2-4, dense rocks scaled up, rare ores 1-2, plain `Rock` 1-4, `Big Rock` 15-25, weeds from `Grass` 2-6 and `Big Grass` 8-16; forage through CE 865: `Leaf Pile` and `Herb` 2-4, `Bloodberry` and the twelve mushroom templates 1-4; any pickaxe, axe, scythe or hand-picked template can be listed). Never below the game's own amount for a template. Magic crystals and gem nodes untouched |
 | CheapKiosk | `CheapKiosk.js` | Mall Kiosk (shop 1) sells every tagged item, weapon and armor for 1 gold, A to Z, key items excluded; in-memory catalogue |
 | Espresso | `Espresso.js` | New drink in blank item slot 1400, Coffee Maker recipe (6 beans), reuses state 243 with an `espresso` marker on the timer entry; speeds 4.85 / 5.3 / 5.8 for 24 h |
 

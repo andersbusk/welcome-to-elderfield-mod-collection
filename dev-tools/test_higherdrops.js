@@ -14,14 +14,18 @@ const fail = m => { problems++; realLog("!! " + m); };
 
 // The agreed table: template name -> [min, max]
 const EXPECT = {
-    "Coal Ore": [8, 34], "Dense Coal": [16, 68],
+    "Coal Ore": [7, 31], "Dense Coal": [14, 62],
     "Copper Ore": [2, 3], "Dense Copper": [4, 7],
     "Iron Ore": [3, 8], "Dense Iron": [6, 14],
     "Gold Ore": [2, 4], "Dense Gold": [4, 8],
     "Salt Ore": [2, 3], "Verdite Ore": [2, 4], "Green Crystal": [2, 5], "Void Crystal Ore": [2, 3],
     "Crimson Ore": [1, 2], "Platinum Ore": [1, 2], "Dense Black Iron Ore Large": [1, 2],
     "Rock": [1, 4], "Big Rock": [15, 25],
-    "Grass": [2, 6], "Big Grass": [8, 16]
+    "Grass": [2, 6], "Big Grass": [8, 16],
+    "Leaf Pile": [2, 4], "Herb": [2, 4], "Bloodberry": [1, 4],
+    "RED MUSHROOM": [1, 4], "GREEN MUSHROOM": [1, 4], "Common": [1, 4], "Spiritcap": [1, 4], "Nighthood": [1, 4],
+    "Corpse Ear": [1, 4], "Ashy": [1, 4], "Morel": [1, 4], "Whisptop": [1, 4], "Bulbous": [1, 4], "Dualsprout": [1, 4],
+    "Golden": [1, 4]
 };
 const items = readJson("Items.json");
 const baseName = n => n.replace(/[ _]?\d+$/, "").trim();
@@ -91,7 +95,7 @@ for (const name of Object.keys(seen)) {
 realLog(`\ncommands changed on the spawn map: ${changedCmds}`);
 
 // ---- things that must stay untouched ----
-const untouched = ["Dense Iron Ore Large", "Dense Gold Ore Large", "Small Rock 1", "Small Moon Crystal", "Large Moon Crystal", "Gem Node t1", "Damp Rock 1", "Clutter1 Crate"];
+const untouched = ["Gravemoss", "Slimeweed", "Wild Herbs", "Sunflower", "Snow Pearls", "Coral1", "Vileroot", "Soul Fragments", "News Bug", "Dense Iron Ore Large", "Dense Gold Ore Large", "Small Rock 1", "Small Moon Crystal", "Large Moon Crystal", "Gem Node t1", "Damp Rock 1", "Clutter1 Crate"];
 for (const n of untouched) {
     const i = original.events.findIndex(ev => ev && ev.name === n);
     if (i < 0) { fail(`template "${n}" not found (test needs updating)`); continue; }
@@ -103,7 +107,7 @@ for (const file of ["Map037.json", "Map053.json"]) {
     delete r.map.__higherDropsPatched;
     if (JSON.stringify(r.original) !== JSON.stringify(r.map)) fail(`${file} was changed`);
 }
-realLog("stone, crystals, gem nodes, clutter and other maps untouched: " + (problems === 0 ? "yes" : "see above"));
+realLog("large dense rocks, crystals, gem nodes, clutter, other forage and other maps untouched: " + (problems === 0 ? "yes" : "see above"));
 
 realLog(`\nproblems: ${problems}`);
 process.exit(problems ? 1 : 0);

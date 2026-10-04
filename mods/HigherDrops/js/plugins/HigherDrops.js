@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc [HigherDrops] Ore rocks, stone and grass drop more: coal about four times as much, copper a bit more, iron like coal used to be.
+ * @plugindesc [HigherDrops] Ore rocks, stone and grass drop more: coal about three and a half times as much, copper a bit more, iron like coal used to be.
  * @author Anders
  *
  * @help
@@ -17,9 +17,9 @@
  * Nothing is written to save files. It applies to rocks already on the map
  * too, because the amount is rolled at the moment a rock breaks.
  *
- * The game's own "2x Items!" mining bonus still applies on top.
+ * The game's own "2x Items!" bonus (mining and foraging) still applies on top.
  *
- * Add any other pickaxe, axe or scythe target to DROPS by its template name
+ * Add any other pickaxe, axe, scythe or hand-picked target to DROPS by its template name
  * (dev-tools/list_drops.py in the mod collection prints them all).
  */
 
@@ -35,8 +35,8 @@
     // amount. The unmodded amount is in the comment.
     const DROPS = {
         // --- Coal ---
-        "Coal Ore":                   [8, 34],    // 3-8
-        "Dense Coal":                 [16, 68],   // 6-14  (kept at double the plain rock, as in the game)
+        "Coal Ore":                   [7, 31],    // 3-8
+        "Dense Coal":                 [14, 62],   // 6-14  (kept at double the plain rock, as in the game)
 
         // --- Copper ---
         "Copper Ore":                 [2, 3],     // 1
@@ -65,7 +65,29 @@
 
         // --- Weeds (cut with the scythe) ---
         "Grass":                      [2, 6],     // 1-3
-        "Big Grass":                  [8, 16]     // 4-8
+        "Big Grass":                  [8, 16],    // 4-8
+
+        // --- Picked by hand ---
+        "Leaf Pile":                  [2, 4],     // 1    Dead Leaves
+        "Herb":                       [2, 4],     // 1-2  Bitter Herb
+        "Bloodberry":                 [1, 4],     // 1    Bloodberries
+
+        // --- Mushrooms (picked by hand) ---
+        "RED MUSHROOM":               [1, 4],     // 1-2  Red Mushroom
+        "GREEN MUSHROOM":             [1, 4],     // 1-2  Green Mushroom
+        "Common":                     [1, 4],     // 1    Common Mushroom
+        "Spiritcap":                  [1, 4],     // 1    Spiritcap Mushroom
+        "Nighthood":                  [1, 4],     // 1    Night-Hood Mushroom
+        "Corpse Ear":                 [1, 4],     // 1    Corpse-Ear Mushroom
+        "Ashy":                       [1, 4],     // 1    Ashy Mushroom
+        "Morel":                      [1, 4],     // 1    Earthen Morel
+        "Whisptop":                   [1, 4],     // 1    Whisptop Mushroom
+        "Bulbous":                    [1, 4],     // 1    Bulbous Mushroom
+        "Dualsprout":                 [1, 4],     // 1    Dual-Sprout Mushroom
+        "Golden":                     [1, 4]      // 1    Golden Mushroom (sells for 300)
+        // Other forage you could add, with the game's amount:
+        //   "Gravemoss" 1, "Slimeweed" 1, "Vilebloom" 1, "Vileroot" 1, "Coral" 1 (Elder Coral),
+        //   "Sunflower" 1-3 (Sunflower Seeds), "Snow Pearls" 2-3, "Wild Herbs" 2-4 (Herb Portion)
     };
     // A rock never drops less than in the unmodded game: if the game's own
     // amount is higher than a number here, the game's number is used.
@@ -73,13 +95,14 @@
     // Left at the game's amounts unless added above: Dense Iron Ore Large and
     // Dense Gold Ore Large (1 each), Small Rock (1),
     // the magic crystals (Small / Large ... Crystal), gem
-    // nodes, Damp Rock, breakable clutter and trees.
+    // nodes, Damp Rock, breakable clutter, trees, and the forage listed in the comment above.
     // ========================================================================
     // END CONFIG
     // ========================================================================
 
     const VAR_AMOUNT = 31;                       // "Amount": how many pieces the next break gives
-    const SWING_EVENTS = [917, 906, 978, 984];   // pickaxe, axe (tree), axe (wood), scythe
+    // Events a template hands over to: pickaxe, axe (tree), axe (wood), scythe, picking by hand.
+    const HARVEST_EVENTS = [917, 906, 978, 984, 865];
 
     // "Coal Ore 2" and "Coal Ore" are the same kind of rock: ignore a trailing number.
     const baseName = (name) => String(name || "").replace(/[ _]?\d+$/, "").trim();
@@ -106,8 +129,8 @@
             if (!range) continue;
             for (const page of ev.pages) {
                 const list = page.list || [];
-                // Only pages that actually hand over to a swing event.
-                if (!list.some(cmd => cmd.code === 117 && SWING_EVENTS.includes(cmd.parameters[0]))) continue;
+                // Only pages that actually hand over to a harvest event.
+                if (!list.some(cmd => cmd.code === 117 && HARVEST_EVENTS.includes(cmd.parameters[0]))) continue;
                 for (const cmd of list) {
                     const p = cmd.parameters;
                     if (cmd.code === 122 && p[0] === VAR_AMOUNT && p[1] === VAR_AMOUNT && p[2] === 0 && (p[3] === 0 || p[3] === 2)) {

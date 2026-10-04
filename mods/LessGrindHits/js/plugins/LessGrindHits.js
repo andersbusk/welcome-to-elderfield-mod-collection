@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc [LessGrindHits] Fewer swings for pickaxe, axe and scythe: nothing takes more than 6.
+ * @plugindesc [LessGrindHits] Fewer swings for pickaxe, axe and scythe. Felled trees fall faster and you can walk away meanwhile.
  * @author Anders
  *
  * @help
@@ -23,6 +23,9 @@
  *   Better tools then either keep their vanilla advantage (pickaxe) or
  *   halve the swings per tier (axe, scythe). See CONFIG.
  *   The result is never more swings than the unmodded game.
+ *
+ * Felled trees also tip over in about 1 second instead of 2.2, and you can
+ * walk away while they fall (see TREE_FALL in CONFIG).
  *
  * Nothing is written to save files. Health values stored on rocks that already
  * exist are left alone; only the damage per swing changes, so it applies
@@ -86,6 +89,32 @@
     // the Rusty one. (Pickaxe and scythe already use the best one you carry.)
     // true: always use the best axe you carry.
     const FIX_AXE_TIER = true;
+
+    // --- Tree fall ---
+    // A felled tree tips over one small step at a time, in four phases of 15,
+    // 8, 17 and 8 steps. Unmodded that takes about 2.2 seconds, and you stand
+    // locked in place meanwhile:
+    //   119 frames of tilting + 15 frames waiting for the landing screen shake.
+    // With the values below the fall takes about 1 second (63 frames) and you
+    // can walk away while it happens.
+    const TREE_FALL = {
+        enabled: true,
+        // Frames between two tilt steps, one number per phase of the fall.
+        // Unmodded [3, 3, 2, 2]. 1 is the fastest the game can do. A single
+        // number (not a list) is used for all four phases.
+        //   [1, 1, 1, 1] -> 48 frames (0.8 s)    [2, 1, 1, 1] -> 63 frames (1.05 s)
+        //   [2, 2, 1, 1] -> 71 frames (1.2 s)    [2, 2, 2, 1] -> 88 frames (1.5 s)
+        framesPerStep: [2, 1, 1, 1],
+        // How much further each step tilts the tree. Unmodded 1. 2 halves the
+        // number of steps, and so the time, once more.
+        stepMultiplier: 1,
+        // false: do not wait for the screen shake when the tree lands (it still plays).
+        waitForShake: false,
+        // true: you can walk from the moment the tree starts to fall. Only
+        // walking is freed. The next swing, talking and the menu still wait
+        // until the wood is in your bag, as in the unmodded game.
+        moveWhileFalling: true
+    };
     // ========================================================================
     // END CONFIG
     // ========================================================================
@@ -100,6 +129,11 @@
     const TOOL_BY_LEVEL_VAR = {};
     for (const tool of Object.keys(DEFS)) TOOL_BY_LEVEL_VAR[DEFS[tool].levelVar] = tool;
     const AXE_CHECK_EVENT = { id: 907, name: "Check Axe Lv" };
+    const TREE_FALL_EVENT = { id: 908, name: "Tree Fall Anim" };   // calls the "left" and "right" fall events
+    const VAR_TILT        = 15;    // "Math": scratch variable the fall uses as the tilt angle
+    const SWITCH_FALL_RIGHT = 622; // "Fall right"
+    let fallEventId = 0;           // "Tree Fall Anim", resolved when the common events are patched
+    let freeWalk = null;           // the event run that is felling a tree: { list, eventId }
 
     const api = window.LessGrindHits = {};
 
@@ -222,6 +256,53 @@
         return n;
     };
 
+    // The fall is two common events ("left" and "right") called by "Tree Fall Anim". Each runs
+    // four loops of: rotate the tree to the angle, change the angle by a step, wait a few frames.
+    const patchTreeFall = (events) => {
+        if (!TREE_FALL || !TREE_FALL.enabled) return 0;
+        let anim = events[TREE_FALL_EVENT.id];
+        if (!anim || anim.name !== TREE_FALL_EVENT.name) anim = events.find(e => e && e.name === TREE_FALL_EVENT.name);
+        if (!anim) {
+            console.warn(TAG + ' Common event "' + TREE_FALL_EVENT.name + '" not found; tree fall speed unchanged.');
+            return 0;
+        }
+        fallEventId = events.indexOf(anim);
+        const perPhase = Array.isArray(TREE_FALL.framesPerStep) ? TREE_FALL.framesPerStep : [TREE_FALL.framesPerStep];
+        const framesFor = (phase) => Math.max(1, Math.floor(Number(perPhase[Math.min(phase, perPhase.length - 1)]) || 1));
+        const multiplier = Math.max(1, Math.floor(Number(TREE_FALL.stepMultiplier) || 1));
+        const fallIds = [...new Set(anim.list.filter(cmd => cmd.code === 117).map(cmd => cmd.parameters[0]))];
+        let n = 0;
+        for (const id of fallIds) {
+            const ev = events[id];
+            if (!ev || !Array.isArray(ev.list)) continue;
+            let phase = -1;                                              // which of the four loops we are in
+            for (const cmd of ev.list) {
+                const p = cmd.parameters;
+                if (cmd.code === 112) {
+                    phase++;
+                } else if (cmd.code === 230 && phase >= 0 && p[0] !== framesFor(phase)) {
+                    p[0] = framesFor(phase);                             // Wait: frames between steps
+                    n++;
+                } else if (cmd.code === 122 && p[0] === VAR_TILT && p[1] === VAR_TILT && (p[2] === 1 || p[2] === 2) &&
+                           p[3] === 0 && multiplier > 1) {
+                    p[4] = p[4] * multiplier;                            // angle += / -= step
+                    n++;
+                } else if (cmd.code === 225 && p[3] === true && !TREE_FALL.waitForShake) {
+                    p[3] = false;                                        // Shake Screen: do not wait for it
+                    n++;
+                } else if (cmd.code === 121 && p[0] === SWITCH_FALL_RIGHT && p[1] === SWITCH_FALL_RIGHT && p[2] === 0) {
+                    // The game leaves "Fall right" ON when a tree has landed (the left-hand fall
+                    // switches its own flag OFF). Its safety timer then writes to the shared tilt
+                    // variable two seconds later. Unmodded you are still locked at that point; with
+                    // this mod you are not, so finish the way the left-hand fall does.
+                    p[2] = 1;
+                    n++;
+                }
+            }
+        }
+        return n;
+    };
+
     const patchCommonEvents = (events) => {
         if (!Array.isArray(events) || events.__lessGrindHitsPatched) return;
         events.__lessGrindHitsPatched = true;
@@ -229,7 +310,8 @@
         for (const ev of events) {
             if (ev && Array.isArray(ev.list)) swings += patchList(ev.list);
         }
-        console.log(TAG + " Swing commands patched in common events: " + swings + "; axe tier assignments: " + patchAxeCheck(events) + ".");
+        console.log(TAG + " Swing commands patched in common events: " + swings + "; axe tier assignments: " + patchAxeCheck(events) +
+            "; tree fall commands: " + patchTreeFall(events) + ".");
     };
 
     const patchMap = (map) => {
@@ -242,6 +324,53 @@
             }
         }
     };
+
+    // ------------------------------------------------------------------------
+    // Walking while a tree falls
+    // ------------------------------------------------------------------------
+    // The fall runs inside the tree's own event, and the game does not let you walk while an
+    // event runs. From the moment a tree starts to fall until its event has finished (the wood
+    // is in your bag and the tree is gone), the walking check alone is told that no event is
+    // running. Everything else still sees the event, so nothing new can start meanwhile.
+    api.walkingIsFree = () => {
+        const root = (typeof $gameMap !== "undefined" && $gameMap) ? $gameMap._interpreter : null;
+        if (!root || !root._list) { freeWalk = null; return false; }
+        if (freeWalk && (freeWalk.list !== root._list || freeWalk.eventId !== root._eventId)) freeWalk = null;
+        if (freeWalk) return true;
+        const fall = fallEventId > 0 ? $dataCommonEvents[fallEventId] : null;
+        if (!fall) return false;
+        for (let i = root._childInterpreter; i; i = i._childInterpreter) {
+            if (i._list !== fall.list) continue;
+            freeWalk = { list: root._list, eventId: root._eventId };
+            // The swing switched the walking and running poses off until the event ends, and
+            // without them you would glide in the standing pose. Switch them back on now; the
+            // event does the same when it ends.
+            if (typeof Galv !== "undefined" && Galv.CA && typeof Galv.CA.animStatus === "function") Galv.CA.animStatus(true);
+            return true;
+        }
+        return false;
+    };
+
+    if (TREE_FALL && TREE_FALL.enabled && TREE_FALL.moveWhileFalling &&
+        typeof Game_Player !== "undefined" && typeof Game_Map !== "undefined") {
+        let walkCheck = false;                       // true only while the walking check below runs
+        const _Game_Map_isEventRunning = Game_Map.prototype.isEventRunning;
+        Game_Map.prototype.isEventRunning = function() {
+            if (walkCheck) return false;
+            return _Game_Map_isEventRunning.apply(this, arguments);
+        };
+        const _Game_Player_canMove = Game_Player.prototype.canMove;
+        Game_Player.prototype.canMove = function() {
+            if (!api.walkingIsFree()) return _Game_Player_canMove.apply(this, arguments);
+            // Every other reason not to walk (a message on screen, a forced move, ...) still counts.
+            walkCheck = true;
+            try {
+                return _Game_Player_canMove.apply(this, arguments);
+            } finally {
+                walkCheck = false;
+            }
+        };
+    }
 
     if (typeof DataManager !== "undefined") {
         const _DataManager_onLoad = DataManager.onLoad;
