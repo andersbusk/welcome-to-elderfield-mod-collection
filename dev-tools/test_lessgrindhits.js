@@ -49,7 +49,7 @@ for (let i = 0; i < original.length; i++) {
     changed[i] = a.list.filter((c, k) => JSON.stringify(c) !== JSON.stringify(b.list[k])).length;
 }
 realLog("common events changed (id: commands):", JSON.stringify(changed));
-if (JSON.stringify(changed) !== JSON.stringify({ 906: 1, 907: 6, 917: 1, 978: 1, 984: 1 })) fail("unexpected set of patched common events");
+if (JSON.stringify(changed) !== JSON.stringify({ 906: 1, 907: 6, 909: 9, 910: 10, 917: 1, 978: 1, 984: 1 })) fail("unexpected set of patched common events");
 const m156 = JSON.parse(vanillaMap156);
 let mapCmds = 0;
 maps[156].events.forEach((ev, i) => ev && ev.pages.forEach((pg, p) => pg.list.forEach((c, k) => {
@@ -162,6 +162,56 @@ console.warn = realLog;
 $gameVariables.selfValue = savedSelf;
 health = 0;
 if (LessGrindHits.damage(interp, "pickaxe") !== 3) fail("no vanilla fallback for an object without health");
+
+// ---- tree fall: run the game's own fall events through a small interpreter and count frames ----
+// Supports exactly what the fall events use: variable 15 arithmetic, Wait, Loop / Repeat Above /
+// Break Loop, variable conditions, Shake Screen and switches.
+function runFall(ev) {
+    const list = ev.list;
+    const sw = {};
+    const shown = [];
+    let tilt = 0, frames = 0, shakeWait = 0, pc = 0, guard = 0;
+    const cmp = (a, b, op) => [a === b, a >= b, a <= b, a > b, a < b, a !== b][op];
+    while (pc < list.length && guard++ < 200000) {
+        const c = list[pc], p = c.parameters;
+        if (c.code === 122 && p[0] === 15) {
+            if (p[2] === 0) tilt = p[4]; else if (p[2] === 1) tilt += p[4]; else if (p[2] === 2) tilt -= p[4];
+        } else if (c.code === 230) frames += p[0];
+        else if (c.code === 355) shown.push(tilt);                       // the rotate() call
+        else if (c.code === 225) { if (p[3]) shakeWait += p[2]; }
+        else if (c.code === 121) sw[p[0]] = p[2] === 0;
+        else if (c.code === 111) {
+            if (!cmp(tilt, p[3], p[4])) { while (pc + 1 < list.length && list[pc + 1].indent > c.indent) pc++; }
+        } else if (c.code === 113) {                                     // Break Loop (engine logic)
+            let depth = 0;
+            while (pc < list.length - 1) {
+                pc++;
+                if (list[pc].code === 112) depth++;
+                if (list[pc].code === 413) { if (depth > 0) depth--; else break; }
+            }
+        } else if (c.code === 413) {                                     // Repeat Above (engine logic)
+            do { pc--; } while (list[pc].indent !== c.indent);
+        }
+        pc++;
+    }
+    if (guard >= 200000) fail(ev.name + ": fall loop did not finish");
+    return { frames, shakeWait, total: frames + shakeWait, steps: shown.length, maxTilt: Math.max(...shown.map(Math.abs)), sw };
+}
+realLog("\n=== tree fall (frames at 60 per second) ===");
+for (const id of [909, 910]) {
+    const before = runFall(original[id]), after = runFall($dataCommonEvents[id]);
+    realLog(`CE ${id} "${original[id].name}": tilting ${before.frames} -> ${after.frames}, waiting for shake ${before.shakeWait} -> ${after.shakeWait}, ` +
+        `total ${before.total} -> ${after.total} frames (${(before.total / 60).toFixed(1)}s -> ${(after.total / 60).toFixed(1)}s); ` +
+        `steps ${before.steps} -> ${after.steps}; furthest tilt shown ${before.maxTilt} -> ${after.maxTilt} degrees`);
+    if (before.total !== 134) fail(`CE ${id}: unmodded fall is ${before.total} frames, expected 134 (game changed?)`);
+    if (after.total !== 25) fail(`CE ${id}: modded fall is ${after.total} frames, expected 25`);
+    if (after.maxTilt > 90 || after.maxTilt < 80) fail(`CE ${id}: tree ends at ${after.maxTilt} degrees`);
+}
+const right = runFall($dataCommonEvents[910]).sw, left = runFall($dataCommonEvents[909]).sw;
+realLog(`after landing: "Fall right" switch ${runFall(original[910]).sw[622] ? "ON" : "OFF"} -> ${right[622] ? "ON" : "OFF"}; "Fall Left" switch ${left[623] ? "ON" : "OFF"} (unchanged)`);
+if (right[622] !== false || left[623] !== false) fail("a fall switch is left on after landing");
+if (JSON.stringify(original[921]) !== JSON.stringify($dataCommonEvents[921]) || JSON.stringify(original[908]) !== JSON.stringify($dataCommonEvents[908]) ||
+    JSON.stringify(original[902]) !== JSON.stringify($dataCommonEvents[902])) fail("an event outside the two fall events was changed");
 
 // ---- axe tier quirk ----
 const axeCheck = (list) => {                       // run "Check Axe Lv" (only item checks + assignments matter)

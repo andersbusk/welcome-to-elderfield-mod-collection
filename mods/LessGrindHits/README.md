@@ -1,6 +1,6 @@
 # LessGrindHits
 
-Fewer swings with the pickaxe, axe and scythe.
+Fewer swings with the pickaxe, axe and scythe, and felled trees fall much faster.
 
 In the unmodded game every rock, tree and grass tuft has a health value, and a swing does damage equal to your tool's tier
 (Rusty 1, Basic 2, Sturdy 3, Quality 4, Superior 5). The toughest rocks take up to 15 swings.
@@ -57,6 +57,18 @@ needs on any stone it is able to break. Crates, pots, bricks and other breakable
 
 In the game itself nothing needs a scythe better than Basic, so the upper scythe tiers have little to offer with or without this mod.
 
+## Trees fall faster
+
+When a tree is felled it tips over a small step at a time, and you cannot move until it has landed.
+
+| | Unmodded | With LessGrindHits |
+|---|---|---|
+| Tipping over | 119 frames | 25 frames |
+| Waiting for the landing screen shake | 15 frames | 0 (the shake still plays) |
+| Total before you can move | about 2.2 seconds | about 0.4 seconds |
+
+The swing itself and the item pickup are unchanged. Logs, stumps and other non-tree wood never had the long fall.
+
 ## Also fixed: the game uses your best axe
 
 The unmodded game checks for axes starting with the weakest and stops at the first one it finds.
@@ -72,6 +84,7 @@ With this mod the best axe you carry counts. (Pickaxe and scythe already work th
 - `toughest`: the health of the toughest thing each tool tier can break. That thing takes `maxSwings` with that tier, and the rest scale by health.
 - `overrides`: exact swing counts for named things, as `[Rusty, Basic, Sturdy, Quality, Superior]`.
 - `FIX_AXE_TIER`: the axe fix above.
+- `TREE_FALL`: `framesPerStep` (frames between tilt steps), `stepMultiplier` (how far each step tilts), `waitForShake`, and `enabled`.
 
 ## Your save
 
