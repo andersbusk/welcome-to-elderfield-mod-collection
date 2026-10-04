@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc [HigherDrops] Ore rocks and stone drop more pieces: coal about tripled, copper a bit more, iron like coal used to be.
+ * @plugindesc [HigherDrops] Ore rocks, stone and grass drop more: coal about four times as much, copper a bit more, iron like coal used to be.
  * @author Anders
  *
  * @help
@@ -35,8 +35,8 @@
     // amount. The unmodded amount is in the comment.
     const DROPS = {
         // --- Coal ---
-        "Coal Ore":                   [7, 27],    // 3-8
-        "Dense Coal":                 [14, 54],   // 6-14  (kept at double the plain rock, as in the game)
+        "Coal Ore":                   [8, 34],    // 3-8
+        "Dense Coal":                 [16, 68],   // 6-14  (kept at double the plain rock, as in the game)
 
         // --- Copper ---
         "Copper Ore":                 [2, 3],     // 1
@@ -61,7 +61,11 @@
 
         // --- Stone ---
         "Rock":                       [1, 4],     // 1 (2 in the Catacombs mines, which become 2-4)
-        "Big Rock":                   [15, 25]    // 10
+        "Big Rock":                   [15, 25],   // 10
+
+        // --- Weeds (cut with the scythe) ---
+        "Grass":                      [2, 6],     // 1-3
+        "Big Grass":                  [8, 16]     // 4-8
     };
     // A rock never drops less than in the unmodded game: if the game's own
     // amount is higher than a number here, the game's number is used.
@@ -69,7 +73,7 @@
     // Left at the game's amounts unless added above: Dense Iron Ore Large and
     // Dense Gold Ore Large (1 each), Small Rock (1),
     // the magic crystals (Small / Large ... Crystal), gem
-    // nodes, Damp Rock, breakable clutter, trees and grass.
+    // nodes, Damp Rock, breakable clutter and trees.
     // ========================================================================
     // END CONFIG
     // ========================================================================

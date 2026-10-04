@@ -14,13 +14,14 @@ const fail = m => { problems++; realLog("!! " + m); };
 
 // The agreed table: template name -> [min, max]
 const EXPECT = {
-    "Coal Ore": [7, 27], "Dense Coal": [14, 54],
+    "Coal Ore": [8, 34], "Dense Coal": [16, 68],
     "Copper Ore": [2, 3], "Dense Copper": [4, 7],
     "Iron Ore": [3, 8], "Dense Iron": [6, 14],
     "Gold Ore": [2, 4], "Dense Gold": [4, 8],
     "Salt Ore": [2, 3], "Verdite Ore": [2, 4], "Green Crystal": [2, 5], "Void Crystal Ore": [2, 3],
     "Crimson Ore": [1, 2], "Platinum Ore": [1, 2], "Dense Black Iron Ore Large": [1, 2],
-    "Rock": [1, 4], "Big Rock": [15, 25]
+    "Rock": [1, 4], "Big Rock": [15, 25],
+    "Grass": [2, 6], "Big Grass": [8, 16]
 };
 const items = readJson("Items.json");
 const baseName = n => n.replace(/[ _]?\d+$/, "").trim();

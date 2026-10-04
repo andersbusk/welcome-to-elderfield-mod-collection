@@ -1,6 +1,6 @@
 # HigherDrops
 
-Ore rocks and plain stone drop more pieces per rock.
+Ore rocks, plain stone and grass drop more pieces each.
 
 In the unmodded game Coal Ore drops 3 to 8 pieces, while nearly every other ore drops exactly 1.
 This mod gives the other ores a range too, and raises coal.
@@ -9,8 +9,8 @@ This mod gives the other ores a range too, and raises coal.
 
 | Rock | Drops | Unmodded | With HigherDrops |
 |---|---|---|---|
-| Coal Ore | Coal | 3-8 | 7-27 |
-| Dense Coal | Coal | 6-14 | 14-54 |
+| Coal Ore | Coal | 3-8 | 8-34 |
+| Dense Coal | Coal | 6-14 | 16-68 |
 | Copper Ore | Copper Ore | 1 | 2-3 |
 | Dense Copper | Copper Ore | 2-4 | 4-7 |
 | Iron Ore | Iron Ore | 1 | 3-8 |
@@ -27,13 +27,15 @@ This mod gives the other ores a range too, and raises coal.
 | Rock (plain stone) | Stone | 1 | 1-4 |
 | Rock in the Catacombs mines | Stone | 2 | 2-4 |
 | Big Rock | Stone | 10 | 15-25 |
+| Grass (scythe) | Weeds | 1-3 | 2-6 |
+| Big Grass (scythe) | Weeds | 4-8 | 8-16 |
 
 The game picks a whole number in the range each time a rock breaks.
 Its own "2x Items!" mining bonus still applies on top.
 
 A rock never drops less than in the unmodded game. Where the game's own amount is higher than the table says, the game's number is kept, which is why the Catacombs stone starts at 2.
 
-**Unchanged:** the large dense iron and gold rocks (1 Dense Iron Ore or Dense Gold Ore each), Small Rock (1 Stone), the magic crystals (Death, Deep, Dream, Ghost, Light, Moon), gem nodes, Damp Rock, breakable clutter, trees and grass.
+**Unchanged:** the large dense iron and gold rocks (1 Dense Iron Ore or Dense Gold Ore each), Small Rock (1 Stone), the magic crystals (Death, Deep, Dream, Ghost, Light, Moon), gem nodes, Damp Rock, breakable clutter and trees.
 
 ## Settings
 
