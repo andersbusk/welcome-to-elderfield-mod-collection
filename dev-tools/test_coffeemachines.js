@@ -117,9 +117,15 @@ function boot(mods, tweak) {
 
     // --- character sprites (engine logic) ---
     const sheets = {};
-    global.Bitmap = function(w, h) { this.width = w; this.height = h; this.smooth = true; this.drawn = []; };
+    global.Bitmap = function(w, h) { this.width = w; this.height = h; this.smooth = true; this.drawn = []; this._canvas = {}; this._baseTexture = { destroyed: false }; };
     Bitmap.prototype.addLoadListener = function(cb) { cb(this); };
-    Bitmap.prototype.blt = function(source) { this.drawn.push(source.name); };
+    Bitmap.prototype.blt = function(source) { this.drawn.push(source.name); this._customModified = true; };   // VisuMZ_0_CoreEngine marks drawn-on bitmaps
+    Bitmap.prototype.destroy = function() {                                                                    // WTE_SpriteBaker's guard, then the engine
+        if (this._wteIndestructible) return;
+        this._baseTexture = null; this._canvas = null;
+    };
+    // VisuMZ_0_CoreEngine: a drawn-on bitmap is freed together with a sprite that shows it
+    global.freeSprite = sprite => { if (sprite.bitmap && sprite.bitmap._customModified) sprite.bitmap.destroy(); };
     global.ImageManager = { loadCharacter(name) { if (!sheets[name]) { sheets[name] = new Bitmap(48, 128); sheets[name].name = name; sheets[name].smooth = false; } return sheets[name]; } };
     global.Sprite_Character = function(character) { this._character = character; this._characterName = undefined; this.bitmap = null; };
     Sprite_Character.prototype.updateBitmap = function() {
@@ -432,7 +438,20 @@ state.mapEvents = state.mapEvents.filter(e => e !== table);         // and the o
 frames(sprites[1], 25);
 realLog("   after a table is put under the first and taken from the second: " + (sprites[0].bitmap.name ? "plain" : "counter") + ", " + (sprites[1].bitmap.name ? "plain" : "counter"));
 if (sprites[0].bitmap.name !== espressoSheet || sprites[1].bitmap.name) fail("the picture should follow the table");
-if (sprites[1].bitmap !== sprites[1].bitmap || ImageManager.loadCharacter(espressoSheet).drawn.length) fail("the game's own sprite sheet was drawn on");
+if (ImageManager.loadCharacter(espressoSheet).drawn.length) fail("the game's own sprite sheet was drawn on");
+// Leaving the map (or picking one up) frees the sprites; the shared picture must survive that.
+const shared = sprites[1].bitmap;
+freeSprite(sprites[1]); freeSprite(sprites[4]);
+const back = [tableOne, rugOne].map(c => new Sprite_Character(c));
+back.forEach(s => frames(s, 2));
+const fine = b => !b.name && b._canvas && b._baseTexture && !b._baseTexture.destroyed;
+realLog("   after the sprites are freed and made again (leaving and re-entering the map): " + (back.every(s => fine(s.bitmap)) ? "counter still shown" : "BROKEN") +
+    (back[0].bitmap === shared ? ", same picture" : ", a new picture"));
+if (!back.every(s => fine(s.bitmap)) || back[0].bitmap !== shared) fail("the counter picture did not survive its sprites being freed");
+shared._baseTexture = null; shared._canvas = null;                    // freed anyway, by something that ignores the mark
+back.forEach(s => frames(s, 1));
+realLog("   after the picture is freed by force: " + (back.every(s => fine(s.bitmap)) && back[0].bitmap !== shared ? "drawn again" : "BROKEN"));
+if (!back.every(s => fine(s.bitmap)) || back[0].bitmap === shared || back[0].bitmap !== back[1].bitmap) fail("a freed counter picture should be drawn again");
 
 // ============================ F. without the Espresso mod ============================
 realLog("\nF. CoffeeMachines without the Espresso mod");

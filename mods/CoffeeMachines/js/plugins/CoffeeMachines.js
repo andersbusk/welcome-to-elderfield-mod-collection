@@ -520,17 +520,30 @@
     // the Espresso Machine drawn over it (it covers the coffee machine completely).
     // Only the sprite on screen is changed, never the object, so nothing of this is saved.
     // ------------------------------------------------------------------------
-    let counterBitmap = null, counterRequested = false;
+    //
+    // One picture is shared by every Espresso Machine. The game frees a picture that was drawn
+    // while it runs together with the first sprite that showed it: on leaving the map, on
+    // picking a machine up, at the end of a placement. So the picture is marked as not to be
+    // freed, and it is drawn again if it was freed anyway.
+    let counterBitmap = null, counterRequested = false, counterFailed = false;
+    const isUsable = (bitmap) => !!bitmap && !!bitmap._canvas && !!bitmap._baseTexture && !bitmap._baseTexture.destroyed;
     const counterPicture = () => {
-        if (!counterBitmap && !counterRequested) {
+        if (counterBitmap && !isUsable(counterBitmap)) counterBitmap = null;
+        if (!counterBitmap && !counterRequested && !counterFailed) {
             counterRequested = true;
             const base = ImageManager.loadCharacter(look.counterSheet), top = ImageManager.loadCharacter(look.sheet);
             base.addLoadListener(() => top.addLoadListener(() => {
-                if (!base.width || base.width !== top.width || base.height !== top.height) return;   // not the layout we know: keep the game's look
+                counterRequested = false;
+                if (!base.width || base.width !== top.width || base.height !== top.height) {
+                    counterFailed = true;                   // not the layout we know: keep the game's look
+                    return;
+                }
                 const bitmap = new Bitmap(base.width, base.height);
                 bitmap.smooth = top.smooth;
                 bitmap.blt(base, 0, 0, base.width, base.height, 0, 0);
                 bitmap.blt(top, 0, 0, top.width, top.height, 0, 0);
+                bitmap._wteIndestructible = true;           // the game's own mark for a shared picture (WTE_SpriteBaker)
+                bitmap._customModified = false;             // the core engine's mark for "free with its sprite" (VisuMZ_0_CoreEngine)
                 counterBitmap = bitmap;
             }));
         }
@@ -560,7 +573,9 @@
             const counter = this._cmOnFloor ? counterPicture() : null;
             if (counter) {
                 if (this.bitmap !== counter) this.bitmap = counter;
-            } else if (counterBitmap && this.bitmap === counterBitmap) {
+                this._cmShowsCounter = true;
+            } else if (this._cmShowsCounter) {
+                this._cmShowsCounter = false;
                 this.bitmap = ImageManager.loadCharacter(this._characterName);
             }
         };

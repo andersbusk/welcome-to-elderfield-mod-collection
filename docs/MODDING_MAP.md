@@ -250,6 +250,11 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
 - Sprites: character sheets named `!$Name` are 3 x 4 cells; `Sprite_Character` computes the cell size from the bitmap,
   so a same-sized bitmap can be swapped in on the sprite (never on the event, whose image name is saved).
   `ImageManager.clear()` on map transfer destroys cached bitmaps, so keep a composed bitmap outside the cache.
+  **A bitmap drawn at runtime dies with its sprite:** VisuMZ_0_CoreEngine marks every bitmap that was drawn on
+  (`_customModified`, set by `blt`, `fillRect`, `drawText`, ...) and destroys it when a sprite showing it is destroyed
+  (leaving the map, removing an event). A bitmap shared by several sprites must set `_customModified = false` and
+  `_wteIndestructible = true` (WTE_SpriteBaker makes `Bitmap.destroy` skip those), and should still check
+  `_canvas` / `_baseTexture` before reuse and redraw itself when they are gone.
 - `python dev-tools/find_var.py <id>` shows every reader and writer of a variable; use it before borrowing an `SV:`
   variable. `SV: Item` (1286) is only used by fishing spots, the crab pot and the cask.
 
