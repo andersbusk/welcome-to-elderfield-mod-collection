@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc [HigherDrops] Ore rocks, stone and grass drop more: coal about four times as much, copper a bit more, iron like coal used to be.
+ * @plugindesc [HigherDrops] Ore rocks, stone and grass drop more: coal about three and a half times as much, copper a bit more, iron like coal used to be.
  * @author Anders
  *
  * @help
@@ -35,8 +35,8 @@
     // amount. The unmodded amount is in the comment.
     const DROPS = {
         // --- Coal ---
-        "Coal Ore":                   [8, 34],    // 3-8
-        "Dense Coal":                 [16, 68],   // 6-14  (kept at double the plain rock, as in the game)
+        "Coal Ore":                   [7, 31],    // 3-8
+        "Dense Coal":                 [14, 62],   // 6-14  (kept at double the plain rock, as in the game)
 
         // --- Copper ---
         "Copper Ore":                 [2, 3],     // 1
@@ -70,21 +70,21 @@
         // --- Picked by hand ---
         "Leaf Pile":                  [2, 4],     // 1    Dead Leaves
         "Herb":                       [2, 4],     // 1-2  Bitter Herb
-        "Bloodberry":                 [2, 4],     // 1    Bloodberries
+        "Bloodberry":                 [1, 4],     // 1    Bloodberries
 
         // --- Mushrooms (picked by hand) ---
-        "RED MUSHROOM":               [2, 4],     // 1-2  Red Mushroom
-        "GREEN MUSHROOM":             [2, 4],     // 1-2  Green Mushroom
-        "Common":                     [2, 4],     // 1    Common Mushroom
-        "Spiritcap":                  [2, 4],     // 1    Spiritcap Mushroom
-        "Nighthood":                  [2, 4],     // 1    Night-Hood Mushroom
-        "Corpse Ear":                 [2, 4],     // 1    Corpse-Ear Mushroom
-        "Ashy":                       [2, 4],     // 1    Ashy Mushroom
-        "Morel":                      [2, 4],     // 1    Earthen Morel
-        "Whisptop":                   [2, 4],     // 1    Whisptop Mushroom
-        "Bulbous":                    [2, 4],     // 1    Bulbous Mushroom
-        "Dualsprout":                 [2, 4],     // 1    Dual-Sprout Mushroom
-        "Golden":                     [2, 4]      // 1    Golden Mushroom (sells for 300)
+        "RED MUSHROOM":               [1, 4],     // 1-2  Red Mushroom
+        "GREEN MUSHROOM":             [1, 4],     // 1-2  Green Mushroom
+        "Common":                     [1, 4],     // 1    Common Mushroom
+        "Spiritcap":                  [1, 4],     // 1    Spiritcap Mushroom
+        "Nighthood":                  [1, 4],     // 1    Night-Hood Mushroom
+        "Corpse Ear":                 [1, 4],     // 1    Corpse-Ear Mushroom
+        "Ashy":                       [1, 4],     // 1    Ashy Mushroom
+        "Morel":                      [1, 4],     // 1    Earthen Morel
+        "Whisptop":                   [1, 4],     // 1    Whisptop Mushroom
+        "Bulbous":                    [1, 4],     // 1    Bulbous Mushroom
+        "Dualsprout":                 [1, 4],     // 1    Dual-Sprout Mushroom
+        "Golden":                     [1, 4]      // 1    Golden Mushroom (sells for 300)
         // Other forage you could add, with the game's amount:
         //   "Gravemoss" 1, "Slimeweed" 1, "Vilebloom" 1, "Vileroot" 1, "Coral" 1 (Elder Coral),
         //   "Sunflower" 1-3 (Sunflower Seeds), "Snow Pearls" 2-3, "Wild Herbs" 2-4 (Herb Portion)

@@ -14,7 +14,7 @@ const fail = m => { problems++; realLog("!! " + m); };
 
 // The agreed table: template name -> [min, max]
 const EXPECT = {
-    "Coal Ore": [8, 34], "Dense Coal": [16, 68],
+    "Coal Ore": [7, 31], "Dense Coal": [14, 62],
     "Copper Ore": [2, 3], "Dense Copper": [4, 7],
     "Iron Ore": [3, 8], "Dense Iron": [6, 14],
     "Gold Ore": [2, 4], "Dense Gold": [4, 8],
@@ -22,10 +22,10 @@ const EXPECT = {
     "Crimson Ore": [1, 2], "Platinum Ore": [1, 2], "Dense Black Iron Ore Large": [1, 2],
     "Rock": [1, 4], "Big Rock": [15, 25],
     "Grass": [2, 6], "Big Grass": [8, 16],
-    "Leaf Pile": [2, 4], "Herb": [2, 4], "Bloodberry": [2, 4],
-    "RED MUSHROOM": [2, 4], "GREEN MUSHROOM": [2, 4], "Common": [2, 4], "Spiritcap": [2, 4], "Nighthood": [2, 4],
-    "Corpse Ear": [2, 4], "Ashy": [2, 4], "Morel": [2, 4], "Whisptop": [2, 4], "Bulbous": [2, 4], "Dualsprout": [2, 4],
-    "Golden": [2, 4]
+    "Leaf Pile": [2, 4], "Herb": [2, 4], "Bloodberry": [1, 4],
+    "RED MUSHROOM": [1, 4], "GREEN MUSHROOM": [1, 4], "Common": [1, 4], "Spiritcap": [1, 4], "Nighthood": [1, 4],
+    "Corpse Ear": [1, 4], "Ashy": [1, 4], "Morel": [1, 4], "Whisptop": [1, 4], "Bulbous": [1, 4], "Dualsprout": [1, 4],
+    "Golden": [1, 4]
 };
 const items = readJson("Items.json");
 const baseName = n => n.replace(/[ _]?\d+$/, "").trim();

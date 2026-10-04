@@ -9,8 +9,8 @@ This mod gives the other ores a range too, and raises coal.
 
 | Rock | Drops | Unmodded | With HigherDrops |
 |---|---|---|---|
-| Coal Ore | Coal | 3-8 | 8-34 |
-| Dense Coal | Coal | 6-14 | 16-68 |
+| Coal Ore | Coal | 3-8 | 7-31 |
+| Dense Coal | Coal | 6-14 | 14-62 |
 | Copper Ore | Copper Ore | 1 | 2-3 |
 | Dense Copper | Copper Ore | 2-4 | 4-7 |
 | Iron Ore | Iron Ore | 1 | 3-8 |
@@ -36,9 +36,9 @@ Picked by hand:
 |---|---|---|---|
 | Leaf Pile | Dead Leaves | 1 | 2-4 |
 | Herb | Bitter Herb | 1-2 | 2-4 |
-| Bloodberry | Bloodberries | 1 | 2-4 |
-| Red Mushroom, Green Mushroom | the same | 1-2 | 2-4 |
-| Common, Spiritcap, Night-Hood, Corpse-Ear, Ashy, Whisptop, Bulbous, Dual-Sprout and Golden Mushroom, Earthen Morel | the same | 1 | 2-4 |
+| Bloodberry | Bloodberries | 1 | 1-4 |
+| Red Mushroom, Green Mushroom | the same | 1-2 | 1-4 |
+| Common, Spiritcap, Night-Hood, Corpse-Ear, Ashy, Whisptop, Bulbous, Dual-Sprout and Golden Mushroom, Earthen Morel | the same | 1 | 1-4 |
 
 The game picks a whole number in the range each time a rock breaks or a plant is picked.
 Its own "2x Items!" bonus, for mining and for foraging, still applies on top.
