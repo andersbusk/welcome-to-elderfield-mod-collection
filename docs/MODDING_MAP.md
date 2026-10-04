@@ -289,6 +289,21 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
   `KC_CompositeBitmaps`), plus a fixed 30-frame wait per map. This is why "Updating Crops" is slow.
 - Rain rituals: items 976/977/978 (4/8/16 days), recipes at the Witching Mortar.
 
+### Equipment upgrades (gems)
+- `WTE_EquipmentUpgradeSystem`. Station: the Anvil in the Workshop (map 42 event 32) -> CE 2871 `Open Upgrade Menu`
+  -> CE 2885 `Check Material, do upgrade`, which calls every gem-group event in turn: 2881, 2882, 2877 (Lesser),
+  2875, 2874 (Greater), 2873, 2872 (Special), 2859, 2858, 2857 (Perfect), 2883 (Clear Gem).
+- 62 gems are items 2918-2979 with the `<UpgradeMaterial>` notetag. Per gem, a group event has one block:
+  `If V132 == <gem id>` -> slot event (2889 weapon, 2886 / 2888 armor) -> level-range event (CE 2878 = +0 to +5,
+  CE 2876 = +0 to +10, Perfect gems +10 to +15) -> plugin command `ChangeParameters` / `ChangeExParams` /
+  `ChangeSpParams` / `ChangeElementRate` with the amount in `Value` (a string, evaluated as JS) -> lose 1 gem.
+  A command with `UpdateName: true` also raises the item's +N level.
+- Chipped gives half; Lesser, Greater and Perfect give the same amount and differ only in the level range they
+  work in. The level is read from the item's name (`GetPlusValue` mode `name`), so crafted "+4" jewelry starts at 4.
+- Upgrades apply to the equipment's database entry (every copy of that weapon or armor) and are saved in
+  `$gameSystem._customStats` as a history of deltas per level; changing a gem's amount only affects upgrades made
+  afterwards. `python dev-tools/find_plugin_calls.py WTE_EquipmentUpgradeSystem` prints all of it.
+
 ### Other
 - Achievements: `Cyclone-Steam.js`, awarded by CE 2760 with the ID in V838. No mod or cheat gating exists.
 - Quests: `CGMZ_QuestSystem` params. Build menus: `WTE_VisualChoiceMenu`. Professions and perks: `WTE_Professions`.
