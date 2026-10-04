@@ -1,6 +1,6 @@
 # LessGrind
 
-Cuts the material grind and the waiting. Costs go down, machines finish sooner, coffee lasts all day.
+Cuts the material grind and the waiting. Costs go down, machines finish sooner, coffee lasts a little longer.
 
 ## What it changes
 
@@ -15,7 +15,7 @@ Cuts the material grind and the waiting. Costs go down, machines finish sooner, 
 | "Check back in N days" | Ready one day later than it says | Ready on the day it says. Also applies to the Drying Rack |
 | Klaus's Trough Upgrade | 30 Wood, 30 Stone, 1500 gold for +4 capacity | 15 Wood, 15 Stone, 500 gold for +16 capacity |
 | Trough "Add feed" box | Up to 99 at once | Up to 999 at once |
-| Cup of Coffee, duration | 4 in-game hours | 24 in-game hours |
+| Cup of Coffee, duration | 4 in-game hours | 6 in-game hours |
 | Cup of Coffee, speed (walk / run / bike) | 4.4 / 4.85 / 5.16 | 4.5 / 5.0 / 5.5 |
 | Lucky Horseshoe (trinket) | +10 Luck, -2 Max HP, -2 Defense, -2 M. Defense | +30 Luck, +10 to every other stat |
 

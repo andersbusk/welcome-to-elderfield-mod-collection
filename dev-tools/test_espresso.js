@@ -136,7 +136,7 @@ realLog("   no boost:            ", JSON.stringify(g.speeds()));
 if (!same(g.speeds(), { walk: 4, run: 4.5, bike: 5 })) fail("default speeds wrong");
 g.drinkCoffee();
 realLog("   coffee at hour 100:  ", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
-if (!same(g.speeds(), { walk: 4.5, run: 5, bike: 5.5 }) || g.entry().gameTime.h !== 124 || g.entry().espresso) fail("coffee wrong");
+if (!same(g.speeds(), { walk: 4.5, run: 5, bike: 5.5 }) || g.entry().gameTime.h !== 106 || g.entry().espresso) fail("coffee wrong");
 if (!near(g.speeds(8).walk, 5.0)) fail("coffee diagonal compensation wrong: " + g.speeds(8).walk);
 $gameTime.h = 105;
 g.drinkEspresso();
@@ -173,7 +173,7 @@ g.entry().espressoShots = undefined;
 if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 })) fail("a boost saved before the stronger drinks existed should count as a plain espresso");
 g.expire();
 $gameTime.h = 200; g.drinkCoffee();
-if (g.entry().espresso || !same(g.speeds(), { walk: 4.5, run: 5, bike: 5.5 }) || g.entry().gameTime.h !== 224) fail("coffee after an expired espresso wrong");
+if (g.entry().espresso || !same(g.speeds(), { walk: 4.5, run: 5, bike: 5.5 }) || g.entry().gameTime.h !== 206) fail("coffee after an expired espresso wrong");
 realLog("   after expiry -> default speeds; a later coffee is a plain coffee again: ok");
 
 // ============================ B. Espresso alone ============================

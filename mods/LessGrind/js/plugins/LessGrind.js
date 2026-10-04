@@ -134,7 +134,7 @@
     // --- Coffee (Cup of Coffee gives the "Coffee" movement speed state) ---
     // In-game hours the boost lasts. Vanilla 4. Applies to cups drunk while the
     // mod is active; a boost that is already running keeps its original end time.
-    const COFFEE_HOURS = 24;
+    const COFFEE_HOURS = 6;
     // Movement speed while the coffee boost is active, as the game's speed
     // value (each +1 doubles your speed; the game caps it at 6.5).
     //   no boost:        walk 4.0,  run on foot 4.5,  bike 5.0

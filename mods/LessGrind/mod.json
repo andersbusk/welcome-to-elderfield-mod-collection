@@ -1,7 +1,7 @@
 {
   "name": "Less Grind - cheaper upgrades, faster machines",
   "author": "Anders",
-  "version": "1.8.0",
-  "description": "Every Upgrade-station tool upgrade needs its original ingredients but only 1 of each. Greater Offering of Rain costs 1 Wheat. Preserving Barrel costs 1 Wood. Preserving Barrel and Keg finish in 1 day, Cask ages 1 day per stage. Klaus's Trough Upgrade costs 15 Wood, 15 Stone, 500 gold and adds +16 capacity. Cup of Coffee lasts 24 hours and gives speed walk 4.5, run 5.0, bike 5.5. The Lucky Horseshoe gives +10 to every stat and +30 Luck. (Swing counts are in the LessGrindHits mod.) Edit the CONFIG block in js/plugins/LessGrind.js to change anything.",
+  "version": "1.9.0",
+  "description": "Every Upgrade-station tool upgrade needs its original ingredients but only 1 of each. Greater Offering of Rain costs 1 Wheat. Preserving Barrel costs 1 Wood. Preserving Barrel and Keg finish in 1 day, Cask ages 1 day per stage. Klaus's Trough Upgrade costs 15 Wood, 15 Stone, 500 gold and adds +16 capacity. Cup of Coffee lasts 6 hours (4 unmodded) and gives speed walk 4.5, run 5.0, bike 5.5. The Lucky Horseshoe gives +10 to every stat and +30 Luck. (Swing counts are in the LessGrindHits mod.) Edit the CONFIG block in js/plugins/LessGrind.js to change anything.",
   "priority": 50
 }

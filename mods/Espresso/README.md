@@ -19,7 +19,6 @@ Speed is the game's own scale, where +1 doubles your speed. The game caps it at 
 
 - A weaker drink never replaces a stronger one that is still running: a coffee does nothing to an espresso, an Espresso does nothing to a Double.
 - The same or a stronger drink replaces the running one and starts the 8 hours again.
-- With the `LessGrind` mod a Cup of Coffee lasts 24 hours. An espresso drunk on top of it replaces it, so the boost then ends after the espresso's 8 hours.
 - The buff icon and tooltip still say "Coffee" for all of them.
 
 Works with or without the `LessGrind` mod.
