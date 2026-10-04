@@ -26,12 +26,13 @@ function boot(viaFallback) {
     global.$dataCommonEvents = undefined;
     global.DataManager = { onLoad() {}, isDatabaseLoaded() { return true; } };
     global.CGMZ = { Crafting: { Recipes: [] } };
-    console.log = () => {}; console.warn = realLog;
+    const realWarn = console.warn;
+    console.log = () => {}; console.warn = () => {};      // the recipe part has nothing to work on here and says so
     new Function(source)();
     if (!viaFallback) { DataManager.onLoad($dataArmors); DataManager.onLoad($dataWeapons); DataManager.onLoad($dataArmors); }
     DataManager.isDatabaseLoaded();
     DataManager.isDatabaseLoaded();
-    console.log = realLog;
+    console.log = realLog; console.warn = realWarn;
 }
 
 for (const viaFallback of [false, true]) {
