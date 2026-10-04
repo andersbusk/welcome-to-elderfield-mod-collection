@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc [StrongerGems] Upgrade gems add twice as much and work on equipment of any upgrade level.
+ * @plugindesc [StrongerGems] Upgrade gems add three times as much and work on equipment of any upgrade level.
  * @author Anders
  *
  * @help
@@ -36,7 +36,7 @@
     // What every gem adds is multiplied by this. 1 = as in the unmodded game.
     // Whole numbers work best: Attack, Defense, Max HP and the like are rounded
     // to whole numbers, percentages (Hit Rate, Crit Rate, resistances) are not.
-    const MULTIPLIER = 2;
+    const MULTIPLIER = 3;
 
     // One gem has a drawback: the Treasure Gem takes 4 Max HP away.
     // false: drawbacks stay as they are.   true: they are multiplied too.

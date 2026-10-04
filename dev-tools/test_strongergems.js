@@ -73,10 +73,12 @@ function refused(ev, level) {
     return on;
 }
 const LEVEL_EVENTS = [2878, 2876, 2854, 2860];
+const SHIPPED = 3;                    // the multiplier the mod ships with
 const SPREAD = [0, 4, 5, 6, 9, 10, 11, 15, 16, 40];
 
 // ============================ A. as shipped ============================
 boot();
+if (!source.includes("const MULTIPLIER = " + SHIPPED + ";")) fail("the mod no longer ships with multiplier " + SHIPPED + " (update the test and the README)");
 const before = gemAmounts(vanilla.events), after = gemAmounts($dataCommonEvents);
 const gemIds = Object.keys(before).map(Number).sort((a, b) => a - b);
 realLog("A. Every gem, unmodded -> with StrongerGems (as shipped)");
@@ -85,9 +87,9 @@ realLog("   " + "gem".padEnd(22) + "goes on".padEnd(30) + "adds".padEnd(30) + "-
 for (const id of gemIds) {
     const was = vanilla.items[id], now = $dataItems[id];
     realLog("   " + was.name.padEnd(22) + where(was).padEnd(30) + adds(was).padEnd(30) + ("-> " + adds(now)).padEnd(32) + levels(was) + " -> " + levels(now));
-    // every amount is doubled, except a negative basic stat (the one drawback in the game)
+    // every amount is multiplied, except a negative basic stat (the one drawback in the game)
     before[id].forEach(([cmd, v], k) => {
-        const want = cmd === "ChangeParameters" && v < 0 ? v : Math.round(v * 2 * 10000) / 10000;
+        const want = cmd === "ChangeParameters" && v < 0 ? v : Math.round(v * SHIPPED * 10000) / 10000;
         if (after[id][k][0] !== cmd || after[id][k][1] !== want) fail(`${was.name}: ${cmd} ${v} became ${after[id][k][1]}, expected ${want}`);
     });
     // the description follows the commands: a number the game's own text shares with a command
@@ -147,10 +149,10 @@ if (!same(vanilla.items[2977], $dataItems[2977])) fail("the Clear Gem was change
 
 // ============================ B. other settings ============================
 realLog("\nB. Other settings");
-boot(setConfig("MULTIPLIER", "3"));
+boot(setConfig("MULTIPLIER", "2"));
 let a3 = gemAmounts($dataCommonEvents);
-realLog(`   x3: Chipped Rage Gem ${adds(vanilla.items[2969])} -> ${adds($dataItems[2969])} | Lesser Sharp Gem ${adds(vanilla.items[2976])} -> ${adds($dataItems[2976])} | Treasure Gem ${adds(vanilla.items[2934])} -> ${adds($dataItems[2934])}`);
-if (a3[2969][0][1] !== 0.6 || a3[2976][0][1] !== 6 || !same(a3[2934].map(x => x[1]), [12, -4])) fail("x3 amounts wrong");
+realLog(`   x2: Chipped Rage Gem ${adds(vanilla.items[2969])} -> ${adds($dataItems[2969])} | Lesser Sharp Gem ${adds(vanilla.items[2976])} -> ${adds($dataItems[2976])} | Treasure Gem ${adds(vanilla.items[2934])} -> ${adds($dataItems[2934])}`);
+if (a3[2969][0][1] !== 0.4 || a3[2976][0][1] !== 4 || !same(a3[2934].map(x => x[1]), [8, -4])) fail("x2 amounts wrong");
 boot(src => setConfig("MULTIPLIER", "1.5")(setConfig("MULTIPLY_PENALTIES", "true")(src)));
 a3 = gemAmounts($dataCommonEvents);
 realLog(`   x1.5 with penalties: Chipped Sharp Gem ${adds(vanilla.items[2974])} -> ${adds($dataItems[2974])} | Chipped Rage Gem -> ${adds($dataItems[2969])} | Treasure Gem -> ${adds($dataItems[2934])}`);
