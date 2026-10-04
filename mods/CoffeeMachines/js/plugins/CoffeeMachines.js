@@ -1,17 +1,19 @@
 /*:
  * @target MZ
- * @plugindesc [CoffeeMachines] Placeable Coffee Machine and Espresso Machine: put in a bean, come back an hour later.
+ * @plugindesc [CoffeeMachines] A placeable Coffee Machine, and the game's Espresso Machine made to work: put in a bean, come back an hour later.
  * @author Anders
  *
  * @help
  * ============================================================================
  * CoffeeMachines.js
  * ============================================================================
- * Adds two placeable machines, sold at the General Store:
+ * Two machines, sold at the General Store:
  *
  *   Coffee Machine     1 Coffee Bean  -> 1 Cup of Coffee, one in-game hour later
+ *                      A new item. It looks like the game's Coffee Maker.
  *   Espresso Machine   2 Coffee Beans -> 1 Espresso,      one in-game hour later
- *                      (only with the Espresso mod enabled)
+ *                      The game's own Espresso Machine decoration, which this
+ *                      mod makes work. Only with the Espresso mod enabled.
  *
  * Walk up to a machine and press the action button: put a bean in, pick the
  * machine up, or cancel. While it brews it tells you how long is left. When it
@@ -20,15 +22,16 @@
  * while you are elsewhere or asleep.
  *
  * How it is built, and what that means for your save:
- *  - A placed machine is stored in the save as the game's own Coffee Maker
- *    object with a small marker on it. Nothing in the save points at anything
- *    this mod adds. If the mod is removed, every placed machine simply is a
- *    Coffee Maker again (and picks up as one).
- *  - The two items take over blank "Empty" item slots, in memory only. Without
- *    the mod, a machine you still carry shows as that blank "Empty" item.
+ *  - A placed Coffee Machine is stored in the save as the game's own Coffee
+ *    Maker object with a small marker on it. A placed Espresso Machine is the
+ *    game's own Espresso Machine object. Nothing in the save points at anything
+ *    this mod adds. Without the mod a Coffee Machine is a Coffee Maker again
+ *    and an Espresso Machine is a decoration again.
+ *  - The Coffee Machine item takes over a blank "Empty" item slot, in memory
+ *    only. Without the mod, one you still carry shows as that blank item.
  *  - The General Store's saved stock is not touched; the machines are added to
  *    what the shop shows.
- *  - If a game update fills an item slot or changes the Coffee Maker in a way
+ *  - If a game update fills the item slot or changes the Coffee Maker in a way
  *    this mod does not recognise, it switches itself off and logs a warning.
  */
 
@@ -39,23 +42,30 @@
     // ========================================================================
     // CONFIG
     // ========================================================================
-    // slot:    blank "Empty" item slot the machine takes over. Do not change it
-    //          once you own the machine: the save remembers it by this number.
     // beans:   Coffee Beans (any quality, cheapest first) used per cup.
     // minutes: in-game minutes until the cup is ready.
     // price:   price at the General Store.
+    // slot:    blank "Empty" item slot the Coffee Machine takes over. Do not
+    //          change it once you own one: the save remembers it by this number.
+    // gameItem: the game's own item that becomes the Espresso Machine.
     const MACHINES = {
-        coffee:   { slot: 1401, name: "Coffee Machine",   drink: "coffee",   beans: 1, minutes: 60, price: 20 },
-        espresso: { slot: 1402, name: "Espresso Machine", drink: "espresso", beans: 2, minutes: 60, price: 30 }
+        coffee:   { slot: 1401,     name: "Coffee Machine",   drink: "coffee",   beans: 1, minutes: 60, price: 20 },
+        espresso: { gameItem: 2591, name: "Espresso Machine", drink: "espresso", beans: 2, minutes: 60, price: 30 }
     };
 
     // Shops that sell the machines, by the shop's name in the game.
     const SHOP_NAMES = ["General Store"];
 
-    // The game's Coffee Maker can only be placed in the Home. The machines can
-    // be placed wherever this object can: the Keg goes in the Home, on the
-    // Farm, in the Workshop and on the Ranch. "" = Home only, like the Coffee Maker.
+    // The game's Coffee Maker and Espresso Machine can only be placed in the
+    // Home. The machines can be placed wherever this object can: the Keg goes
+    // in the Home, on the Farm, in the Workshop and on the Ranch. "" = Home only.
     const PLACE_LIKE = "Keg";
+
+    // The game's Espresso Machine is drawn without anything under it, because it
+    // is meant to stand on a table. true: when it stands on the floor it is
+    // shown on a counter like the Coffee Maker's, and it blocks the way like
+    // one. On a table it looks as in the game.
+    const ESPRESSO_ON_COUNTER = true;
     // ========================================================================
     // END CONFIG
     // ========================================================================
@@ -69,6 +79,9 @@
     const CHOICE_SOURCE = "coffee";                 // the Coffee Maker's choice box
     const CHOICE_TEMPLATE = "coffeemachine";        // ours: the same box without the cooking storage entry
     const SE_BREW = { name: "pot", volume: 100, pitch: 90, pan: 0 };
+    // Version 1.0 had its own Espresso Machine item in this slot, placed as a Coffee Maker object.
+    // Those keep working, and turn into the game's Espresso Machine when picked up.
+    const LEGACY_ESPRESSO_SLOT = 1402;
 
     // Game variables. The "SV:" ones are stored per map object, and the game clears
     // all of them when an object is placed or picked up.
@@ -82,8 +95,10 @@
     const VAR_NAMES = { 133: "Processing Clock", 1286: "SV: Item", 107: "SV: Smelter Product", 108: "SV: Smelter Amount", 106: "SV: Smelter Time" };
 
     const api = window.CoffeeMachines = { enabled: false };
-    const byItem = {};                              // item slot -> machine, filled once the database is ready
-    const placement = { index: 0, wide: null, source: null, copy: null };
+    const byItem = {};                              // item number -> machine, filled once the database is ready
+    const byMarker = {};                            // marker on a placed object -> machine (byItem plus old markers)
+    const placementRules = {};                      // placement number -> { wide, source, copy }
+    const look = { template: null, sheet: "", counterSheet: "" };   // the Espresso Machine's template and the two sprite sheets
 
     const clone = (value) => JSON.parse(JSON.stringify(value));
     const safeParse = (text, fallback) => {
@@ -103,7 +118,7 @@
     // What a machine does. Called from its event; "interp" is the running event.
     // ------------------------------------------------------------------------
     const sv = (interp, id) => (interp && typeof interp.getSv === "function" ? Number(interp.getSv(id)) || 0 : 0);
-    const machineOf = (interp) => byItem[sv(interp, VARS.machine)] || null;
+    const machineOf = (interp) => byMarker[sv(interp, VARS.machine)] || null;
     const clock = () => Number($gameVariables.value(VARS.clock)) || 0;
     const beanItems = () => $dataItems
         .filter(item => item && item.meta && String(item.meta.cgmzcraftinggeneric || "").trim() === BEAN_GENERIC)
@@ -114,8 +129,14 @@
         return $dataItems[COFFEE_ITEM.id];
     };
 
-    api.isMachine = (interp) => api.enabled && !!machineOf(interp);
-    api.machineItem = (interp) => sv(interp, VARS.machine);
+    // adoptItem: the page belongs to an object that is a machine as it stands (the game's Espresso
+    // Machine, also ones placed before this mod). Mark it the first time it is used.
+    api.isMachine = (interp, adoptItem) => {
+        if (!api.enabled) return false;
+        if (adoptItem && byItem[adoptItem] && !sv(interp, VARS.machine) && typeof interp.setSv === "function") interp.setSv(VARS.machine, adoptItem);
+        return !!machineOf(interp);
+    };
+    api.machineItem = (interp) => { const machine = machineOf(interp); return machine ? machine.item : 0; };
     // 0 = empty, 1 = brewing, 2 = the cup is ready
     api.state = (interp) => {
         if (sv(interp, VARS.count) <= 0) return 0;
@@ -288,11 +309,32 @@
     const buildUseEvent = (source, id, machine) => {
         const list = clone(source.list);
         const place = list.find(c => isPluginCommand(c, "PKD_PocketEvents", "PlacePocketEvent"));
-        place.parameters[3].gameItemId = String(machine.slot);
+        place.parameters[3].gameItemId = String(machine.item);
         for (const c of list) {
-            if (c.code === 657 && /^Consume Item = /.test(c.parameters[0])) c.parameters[0] = "Consume Item = " + machine.slot;
+            if (c.code === 657 && /^Consume Item = /.test(c.parameters[0])) c.parameters[0] = "Consume Item = " + machine.item;
         }
         return { id: id, list: list, name: machine.name, switchId: source.switchId, trigger: 0 };
+    };
+
+    // An item that places an object: its use event, the placement it starts, that placement's
+    // template and the template's action page.
+    const placeableOf = (item, events, templates, pkd) => {
+        const effect = item && (item.effects || []).find(e => e.code === 44);
+        const useEvent = effect && events[effect.dataId];
+        const place = useEvent && useEvent.list.find(c => isPluginCommand(c, "PKD_PocketEvents", "PlacePocketEvent"));
+        if (!place || Number(place.parameters[3].gameItemId) !== item.id) return null;
+        const index = Number(place.parameters[3].placementItemId);
+        const entry = Array.isArray(pkd) ? pkd[index] : null;
+        const template = templates.events[entry ? entry.eventId : index];
+        if (!template || template.name !== item.name) return null;
+        const actionPage = template.pages.slice().reverse().find(p => p.trigger === 0);
+        return actionPage ? { useEvent: useEvent, index: index, template: template, actionPage: actionPage } : null;
+    };
+
+    const describe = (whereLine, machine) => {
+        const drink = machine.drink === "espresso" ? "an \\c[6]Espresso\\c[0]" : "a \\c[6]Cup of Coffee\\c[0]";
+        return whereLine + "\nPut in " + (machine.beans === 1 ? "a \\c[6]Coffee Bean\\c[0]" : machine.beans + " \\c[6]Coffee Beans\\c[0]") +
+            " and collect " + drink + " " + (machine.minutes === 60 ? "an hour" : machine.minutes + " minutes") + " later.";
     };
 
     const trySetup = () => {
@@ -309,79 +351,101 @@
         for (const id of Object.keys(VAR_NAMES)) {
             if (system.variables[id] !== VAR_NAMES[id]) return stop("Variable " + id + " is no longer \"" + VAR_NAMES[id] + "\".");
         }
+        const pkd = typeof PKD_EasyPlacement !== "undefined" && PKD_EasyPlacement.PARAMS ? PKD_EasyPlacement.PARAMS.ITEMS : null;
         const maker = items[MAKER_ITEM.id], coffee = items[COFFEE_ITEM.id];
         if (!maker || maker.name !== MAKER_ITEM.name || !coffee || coffee.name !== COFFEE_ITEM.name) return stop("Coffee Maker or Cup of Coffee item not found.");
-        const useEffect = (maker.effects || []).find(e => e.code === 44);
-        const useEvent = useEffect && events[useEffect.dataId];
-        const place = useEvent && useEvent.list.find(c => isPluginCommand(c, "PKD_PocketEvents", "PlacePocketEvent"));
-        if (!place || Number(place.parameters[3].gameItemId) !== maker.id) return stop("The Coffee Maker's placement event has an unexpected layout.");
+        const makerPlace = placeableOf(maker, events, templates, pkd);
+        const page = makerPlace && parseMakerPage(makerPlace.actionPage.list);
+        if (!page) return stop("The Coffee Maker's placement or page has an unexpected layout.");
         if (!findEvent(events, GIVE_EVENT)) return stop("\"" + GIVE_EVENT.name + "\" event not found.");
+        const coffeeMachine = Object.assign({}, MACHINES.coffee, { item: MACHINES.coffee.slot, placement: makerPlace.index });
+        if (!isBlankSlot(items[coffeeMachine.item])) return stop("Item slot " + coffeeMachine.item + " is no longer blank (a game update may have used it).");
 
-        // The Coffee Maker's template among the placeables, and its action page
-        const pkd = typeof PKD_EasyPlacement !== "undefined" && PKD_EasyPlacement.PARAMS ? PKD_EasyPlacement.PARAMS.ITEMS : null;
-        const index = Number(place.parameters[3].placementItemId);
-        const entry = Array.isArray(pkd) ? pkd[index] : null;
-        const template = templates.events[entry ? entry.eventId : index];
-        if (!template || template.name !== MAKER_ITEM.name) return stop("Coffee Maker template not found among the placeables.");
-        const actionPage = template.pages.slice().reverse().find(p => p.trigger === 0);
-        const page = actionPage && parseMakerPage(actionPage.list);
-        if (!page) return stop("The Coffee Maker's page has an unexpected layout.");
-
-        const wanted = Object.keys(MACHINES).map(key => MACHINES[key]).filter(machine => {
-            if (machine.drink !== "espresso" || window.EspressoMod) return true;
-            console.log(TAG + " " + machine.name + " skipped: it needs the Espresso mod.");
-            return false;
-        });
-        for (const machine of wanted) {
-            if (!isBlankSlot(items[machine.slot])) return stop("Item slot " + machine.slot + " is no longer blank (a game update may have used it).");
+        // The Espresso Machine: the game's own decoration. Leave it alone when anything is off.
+        let espressoMachine = null, espressoPlace = null;
+        const espressoItem = items[MACHINES.espresso.gameItem];
+        if (!window.EspressoMod) {
+            console.log(TAG + " " + MACHINES.espresso.name + " left as a decoration: it needs the Espresso mod.");
+        } else if (!espressoItem || espressoItem.name !== MACHINES.espresso.name) {
+            console.warn(TAG + " Item " + MACHINES.espresso.gameItem + " is not \"" + MACHINES.espresso.name + "\"; no espresso machine.");
+        } else {
+            espressoPlace = placeableOf(espressoItem, events, templates, pkd);
+            const returnsItself = espressoPlace && espressoPlace.actionPage.list.some(c => c.code === 122 && c.parameters[0] === VARS.item &&
+                c.parameters[3] === 0 && c.parameters[4] === espressoItem.id);
+            if (returnsItself) espressoMachine = Object.assign({}, MACHINES.espresso, { item: espressoItem.id, placement: espressoPlace.index });
+            else console.warn(TAG + " The " + MACHINES.espresso.name + "'s placement or page has an unexpected layout; it stays a decoration.");
         }
 
         // Where the machines may be placed: borrow the rules (and the wording) of another placeable
-        let whereLine = String(maker.description).split("\n")[0];
+        let whereLine = String(maker.description).split("\n")[0], wide = null;
         if (PLACE_LIKE && Array.isArray(pkd)) {
             const like = pkd.find(p => p && templates.events[p.eventId] && templates.events[p.eventId].name === PLACE_LIKE);
             const likeItem = items.find(item => item && item.name === PLACE_LIKE && /Placeable/.test(item.description));
             if (like && Array.isArray(like.onlyRegions) && likeItem) {
-                placement.wide = like.onlyRegions.slice();
+                wide = like.onlyRegions.slice();
                 whereLine = String(likeItem.description).split("\n")[0];
             } else {
-                console.warn(TAG + " \"" + PLACE_LIKE + "\" not found among the placeables; the machines go where a Coffee Maker goes.");
+                console.warn(TAG + " \"" + PLACE_LIKE + "\" not found among the placeables; the machines go where the game's own objects go.");
             }
         }
-        placement.index = index;
 
-        // One event for both machines, called from the Coffee Maker's page when the object is a machine
+        // One event for both machines. A machine's page calls it and then stops; five commands are
+        // put in front of the game's page for that.
         const machineEvent = buildMachineEvent(events.length, page, events, addChoiceTemplate(page));
         events.push(machineEvent);
-        actionPage.list.unshift(
-            { code: 111, indent: 0, parameters: [12, "window.CoffeeMachines && window.CoffeeMachines.isMachine(this)"] },
+        const prefix = (condition) => [
+            { code: 111, indent: 0, parameters: [12, condition] },
             { code: 117, indent: 1, parameters: [machineEvent.id] },
             { code: 115, indent: 1, parameters: [] },
             { code: 0, indent: 1, parameters: [] },
             { code: 412, indent: 0, parameters: [] }
-        );
+        ];
+        // The Coffee Maker's page: only for objects marked as a machine.
+        makerPlace.actionPage.list.unshift(...prefix("window.CoffeeMachines && window.CoffeeMachines.isMachine(this)"));
+        placementRules[makerPlace.index] = { wide: wide, source: null, copy: null };
 
-        for (const machine of wanted) {
-            const use = buildUseEvent(useEvent, events.length, machine);
-            events.push(use);
-            const item = clone(maker);
-            delete item.meta;
-            item.id = machine.slot;
-            item.name = machine.name;
-            item.price = machine.price;
-            const drink = machine.drink === "espresso" ? "an \\c[6]Espresso\\c[0]" : "a \\c[6]Cup of Coffee\\c[0]";
-            item.description = whereLine + "\nPut in " + (machine.beans === 1 ? "a \\c[6]Coffee Bean\\c[0]" : machine.beans + " \\c[6]Coffee Beans\\c[0]") +
-                " and collect " + drink + " " + (machine.minutes === 60 ? "an hour" : machine.minutes + " minutes") + " later.";
-            item.effects = [{ code: 44, dataId: use.id, value1: 1, value2: 0 }];
-            // Keep it out of the encyclopedia so its entry list and completion count stay as in the unmodded game.
-            if (!/<cgmzencyclopediahide>/i.test(item.note)) item.note += "\n<cgmzencyclopediahide>";
-            if (typeof DataManager !== "undefined" && DataManager.extractMetadata) DataManager.extractMetadata(item);
-            items[machine.slot] = item;
-            byItem[machine.slot] = machine;
+        // Coffee Machine: a new item, used and placed like a Coffee Maker.
+        const use = buildUseEvent(makerPlace.useEvent, events.length, coffeeMachine);
+        events.push(use);
+        const item = clone(maker);
+        delete item.meta;
+        item.id = coffeeMachine.item;
+        item.name = coffeeMachine.name;
+        item.price = coffeeMachine.price;
+        item.description = describe(whereLine, coffeeMachine);
+        item.effects = [{ code: 44, dataId: use.id, value1: 1, value2: 0 }];
+        // Keep it out of the encyclopedia so its entry list and completion count stay as in the unmodded game.
+        if (!/<cgmzencyclopediahide>/i.test(item.note)) item.note += "\n<cgmzencyclopediahide>";
+        if (typeof DataManager !== "undefined" && DataManager.extractMetadata) DataManager.extractMetadata(item);
+        items[coffeeMachine.item] = item;
+        byItem[coffeeMachine.item] = byMarker[coffeeMachine.item] = coffeeMachine;
+
+        // Espresso Machine: every object of the game's own template is one.
+        if (espressoMachine) {
+            espressoPlace.actionPage.list.unshift(...prefix("window.CoffeeMachines && window.CoffeeMachines.isMachine(this, " + espressoMachine.item + ")"));
+            placementRules[espressoPlace.index] = { wide: wide, source: null, copy: null };
+            espressoItem.description = describe(whereLine, espressoMachine);
+            byItem[espressoMachine.item] = byMarker[espressoMachine.item] = espressoMachine;
+            byMarker[LEGACY_ESPRESSO_SLOT] = espressoMachine;
+            if (ESPRESSO_ON_COUNTER) {
+                espressoPlace.actionPage.through = false;          // the game lets you walk through it
+                look.template = espressoPlace.template;
+                look.sheet = espressoPlace.actionPage.image.characterName;
+                look.counterSheet = makerPlace.actionPage.image.characterName;
+            }
         }
         api.enabled = true;
-        console.log(TAG + " Ready: " + wanted.map(m => m.name + " in slot " + m.slot).join(", ") + "; machine event " + machineEvent.id +
-            "; placeable " + (placement.wide ? "like a " + PLACE_LIKE : "like a Coffee Maker") + ".");
+        console.log(TAG + " Ready: " + Object.keys(byItem).map(id => byItem[id].name + " (item " + id + ")").join(", ") + "; machine event " + machineEvent.id +
+            "; placeable " + (wide ? "like a " + PLACE_LIKE : "as in the game") + ".");
+    };
+
+    // A version 1.0 Espresso Machine still in the bag becomes the game's Espresso Machine.
+    const convertOldItems = () => {
+        const machine = byMarker[LEGACY_ESPRESSO_SLOT];
+        const bag = typeof $gameParty !== "undefined" && $gameParty ? $gameParty._items : null;
+        if (!machine || !bag || !(bag[LEGACY_ESPRESSO_SLOT] > 0) || !isBlankSlot($dataItems[LEGACY_ESPRESSO_SLOT])) return;
+        bag[machine.item] = (bag[machine.item] || 0) + bag[LEGACY_ESPRESSO_SLOT];
+        delete bag[LEGACY_ESPRESSO_SLOT];
     };
 
     if (typeof DataManager !== "undefined") {
@@ -396,13 +460,20 @@
             if (loaded) trySetup();
             return loaded;
         };
+        if (typeof DataManager.extractSaveContents === "function") {
+            const _DataManager_extractSaveContents = DataManager.extractSaveContents;
+            DataManager.extractSaveContents = function(contents) {
+                _DataManager_extractSaveContents.call(this, contents);
+                convertOldItems();
+            };
+        }
     } else {
         console.warn(TAG + " DataManager not found. Mod did nothing.");
     }
 
     // ------------------------------------------------------------------------
-    // Placing a machine. It goes down as the game's Coffee Maker object; the item it
-    // was placed from is written on it as a marker, which is what makes it a machine.
+    // Placing a machine. It goes down as the game's own object; the item it was
+    // placed from is written on it as a marker, which is what makes it a machine.
     // ------------------------------------------------------------------------
     if (typeof PKD_EPManager !== "undefined" && typeof PKD_EPManager.PlaceItemOn === "function" &&
         typeof PKD_EPManager.ItemData === "function" && typeof PKD_EPManager.Start === "function") {
@@ -413,7 +484,7 @@
             const machine = placingMachine();
             const spawned = typeof $gameTemp !== "undefined" && $gameTemp ? $gameTemp._epSpawned : null;
             const result = _PlaceItemOn.apply(this, arguments);
-            if (machine && spawned) $gameVariables.setSelfValue([$gameMap.mapId(), spawned.eventId(), VARS.machine], machine.slot);
+            if (machine && spawned) $gameVariables.setSelfValue([$gameMap.mapId(), spawned.eventId(), VARS.machine], machine.item);
             return result;
         };
 
@@ -421,12 +492,15 @@
         const _ItemData = PKD_EPManager.ItemData;
         PKD_EPManager.ItemData = function(pItemIndex) {
             const data = _ItemData.apply(this, arguments);
-            if (!data || !placement.wide || Number(pItemIndex) !== placement.index || !placingMachine()) return data;
-            if (placement.source !== data) {
-                placement.source = data;
-                placement.copy = Object.assign({}, data, { onlyRegions: placement.wide.slice() });
+            const rule = data ? placementRules[Number(pItemIndex)] : null;
+            if (!rule || !rule.wide) return data;
+            const machine = placingMachine();
+            if (!machine || machine.placement !== Number(pItemIndex)) return data;
+            if (rule.source !== data) {
+                rule.source = data;
+                rule.copy = Object.assign({}, data, { onlyRegions: rule.wide.slice() });
             }
-            return placement.copy;
+            return rule.copy;
         };
 
         // The game remembers "can this object go on this map" per object type. A machine and a
@@ -438,6 +512,58 @@
         };
     } else {
         console.warn(TAG + " Placeable system (PKD_PocketEvents) not found. Machines cannot be placed.");
+    }
+
+    // ------------------------------------------------------------------------
+    // The Espresso Machine on a counter. The picture is put together while the game
+    // runs, from the game's own two sprite sheets: the Coffee Maker on its counter with
+    // the Espresso Machine drawn over it (it covers the coffee machine completely).
+    // Only the sprite on screen is changed, never the object, so nothing of this is saved.
+    // ------------------------------------------------------------------------
+    let counterBitmap = null, counterRequested = false;
+    const counterPicture = () => {
+        if (!counterBitmap && !counterRequested) {
+            counterRequested = true;
+            const base = ImageManager.loadCharacter(look.counterSheet), top = ImageManager.loadCharacter(look.sheet);
+            base.addLoadListener(() => top.addLoadListener(() => {
+                if (!base.width || base.width !== top.width || base.height !== top.height) return;   // not the layout we know: keep the game's look
+                const bitmap = new Bitmap(base.width, base.height);
+                bitmap.smooth = top.smooth;
+                bitmap.blt(base, 0, 0, base.width, base.height, 0, 0);
+                bitmap.blt(top, 0, 0, top.width, top.height, 0, 0);
+                counterBitmap = bitmap;
+            }));
+        }
+        return counterBitmap;
+    };
+    // The game tags what can carry other objects: tables are "table", rugs and floors are "lower".
+    const isTable = (event) => {
+        try {
+            return typeof PKD_EasyPlacement !== "undefined" && !!PKD_EasyPlacement.Utils &&
+                PKD_EasyPlacement.Utils.GetCommentCodeValue("placeOverType", event) === "table";
+        } catch (e) {
+            return false;
+        }
+    };
+    // A placed Espresso Machine that does not stand on a table.
+    api.standsOnFloor = (character) => !!look.template && !!character && typeof character.event === "function" &&
+        character.event() === look.template && !$gameMap.eventsXy(character.x, character.y).some(other => other !== character && isTable(other));
+
+    if (typeof Sprite_Character !== "undefined" && typeof ImageManager !== "undefined" && typeof Bitmap !== "undefined") {
+        const _Sprite_Character_updateBitmap = Sprite_Character.prototype.updateBitmap;
+        Sprite_Character.prototype.updateBitmap = function() {
+            _Sprite_Character_updateBitmap.apply(this, arguments);
+            if (!look.sheet || this._characterName !== look.sheet) return;
+            // Looking at the tile every frame is not needed; a few times a second is plenty.
+            this._cmTick = (this._cmTick || 0) + 1;
+            if (this._cmOnFloor === undefined || this._cmTick % 20 === 0) this._cmOnFloor = api.standsOnFloor(this._character);
+            const counter = this._cmOnFloor ? counterPicture() : null;
+            if (counter) {
+                if (this.bitmap !== counter) this.bitmap = counter;
+            } else if (counterBitmap && this.bitmap === counterBitmap) {
+                this.bitmap = ImageManager.loadCharacter(this._characterName);
+            }
+        };
     }
 
     // ------------------------------------------------------------------------
@@ -475,7 +601,7 @@
         Game_Shop.prototype.storedGoods = function() {
             const original = _Game_Shop_storedGoods.call(this);
             if (!api.enabled || !shopIndexes.includes(this._tempShopId) || !Array.isArray(original)) return original;
-            if (!goods) goods = Object.keys(byItem).map(Number).map(slot => makeGood($dataItems[slot], byItem[slot].price));
+            if (!goods) goods = Object.keys(byItem).map(Number).map(id => makeGood($dataItems[id], byItem[id].price));
             return original.concat(goods.filter(good => !original.some(g => g.id === good.id && g.etypeId === undefined)));
         };
         if (typeof Scene_CoreShop !== "undefined") {

@@ -1,7 +1,8 @@
 // Offline harness for the CoffeeMachines mod (together with Espresso). Loads the real item,
 // common event, system and placeable-template data, copies the few pieces of game logic the mod
-// hooks into (placement rules and the map whitelist, shop stock, self variables), then runs the
-// machine's event through a small event interpreter for every situation a player can be in.
+// hooks into (placement rules and the map whitelist, shop stock, self variables, character
+// sprites), then runs the machine's event through a small event interpreter for every situation
+// a player can be in.
 //   node test_coffeemachines.js "<game folder>"
 const fs = require("fs");
 const path = require("path");
@@ -20,8 +21,11 @@ const pluginsText = fs.readFileSync(path.join(gameDir, "js/plugins.js"), "utf8")
 const plugins = JSON.parse(pluginsText.slice(pluginsText.indexOf("["), pluginsText.lastIndexOf("]") + 1));
 const params = name => (plugins.find(p => p.name === name) || { parameters: {} }).parameters;
 const vanilla = { items: readJson("Items.json"), events: readJson("CommonEvents.json"), templates: readJson("Map053.json") };
-const MAKER = 160;                       // the Coffee Maker's template and placement number
+const MAKER = 160, ESPRESSO = 317;       // template and placement numbers of the Coffee Maker and the Espresso Machine
+const COFFEE_MACHINE = 1401, ESPRESSO_MACHINE = 2591, COFFEE_MAKER = 2044;
+const PLACEMENT = { [COFFEE_MACHINE]: MAKER, [COFFEE_MAKER]: MAKER, [ESPRESSO_MACHINE]: ESPRESSO, 1402: MAKER };
 const HOME = 2, FARM = 34, TOWN = 1;
+const plain = t => String(t).replace(/\\c\[\d+\]/g, "").replace(/\n/g, " / ");
 
 let state;                               // per boot: variables, bag, log ...
 
@@ -29,14 +33,14 @@ function boot(mods, tweak) {
     global.window = global;
     delete global.EspressoMod;
     delete global.CoffeeMachines;
-    state = { vars: {}, self: {}, switches: {}, bag: {}, map: HOME, nextEventId: 500, placed: [], warnings: [] };
+    state = { vars: {}, self: {}, switches: {}, bag: {}, map: HOME, nextEventId: 500, placed: [], warnings: [], mapEvents: [] };
     global.$dataItems = readJson("Items.json");
     global.$dataCommonEvents = readJson("CommonEvents.json");
     global.$dataSystem = readJson("System.json");
     global.CGMZ = { Crafting: { Recipes: JSON.parse(params("CGMZ_Crafting").Recipes) } };
     global.PluginManager = { parameters: params };
     global.DataManager = {
-        onLoad() {}, isDatabaseLoaded() { return true; },
+        onLoad() {}, isDatabaseLoaded() { return true; }, extractSaveContents() {},
         extractMetadata(data) {
             const re = /<([^<>:]+)(:?)([^>]*)>/g; data.meta = {};
             for (;;) { const m = re.exec(data.note); if (m) data.meta[m[1]] = m[2] === ":" ? m[3] : true; else break; }
@@ -51,7 +55,7 @@ function boot(mods, tweak) {
         e.onlyRegions = JSON.parse(e.onlyRegions).map(Number);
         e.exceptRegions = JSON.parse(e.exceptRegions).map(Number);
     }
-    global.PKD_EasyPlacement = { PARAMS: { ITEMS: [null].concat(list) } };
+    global.PKD_EasyPlacement = { PARAMS: { ITEMS: [null].concat(list) }, Utils: { GetCommentCodeValue: (code, event) => (code === "placeOverType" && event.type) || null } };
     global.$gameTemp = { _epPlacementPartyItemId: null, _epPlacementItemId: null, _epSpawned: null };
     const whitelists = {};                                                                // WTE_PocketEvents_MapWhitelist logic
     for (const row of JSON.parse(params("WTE_PocketEvents_MapWhitelist").whitelists).map(r => JSON.parse(r))) {
@@ -111,6 +115,20 @@ function boot(mods, tweak) {
     Scene_CoreShop.prototype.create = function() {};
     Scene_CoreShop.prototype.terminate = function() {};
 
+    // --- character sprites (engine logic) ---
+    const sheets = {};
+    global.Bitmap = function(w, h) { this.width = w; this.height = h; this.smooth = true; this.drawn = []; };
+    Bitmap.prototype.addLoadListener = function(cb) { cb(this); };
+    Bitmap.prototype.blt = function(source) { this.drawn.push(source.name); };
+    global.ImageManager = { loadCharacter(name) { if (!sheets[name]) { sheets[name] = new Bitmap(48, 128); sheets[name].name = name; sheets[name].smooth = false; } return sheets[name]; } };
+    global.Sprite_Character = function(character) { this._character = character; this._characterName = undefined; this.bitmap = null; };
+    Sprite_Character.prototype.updateBitmap = function() {
+        if (this._characterName !== this._character.characterName()) {
+            this._characterName = this._character.characterName();
+            this.bitmap = ImageManager.loadCharacter(this._characterName);
+        }
+    };
+
     // --- game state ---
     global.$gameVariables = {
         value: id => state.vars[id] || 0,
@@ -119,8 +137,9 @@ function boot(mods, tweak) {
         setSelfValue: (key, v) => { if (v) state.self[key] = Math.floor(v) || v; else delete state.self[key]; },
         isSelf: id => /^SV:/.test($dataSystem.variables[id] || "")
     };
-    global.$gameMap = { mapId: () => state.map };
+    global.$gameMap = { mapId: () => state.map, eventsXy: (x, y) => state.mapEvents.filter(e => e.x === x && e.y === y) };
     global.$gameParty = {
+        get _items() { return state.bag; },
         numItems: item => state.bag[item.id] || 0,
         gainItem(item, n) { state.bag[item.id] = (state.bag[item.id] || 0) + n; if (state.bag[item.id] <= 0) delete state.bag[item.id]; },
         loseItem(item, n) { this.gainItem(item, -n); }
@@ -216,23 +235,23 @@ class Interp {
         } else this.log.push("call: " + ev.name);
     }
 }
-const use = (eventId, choices) => {
+const use = (template, eventId, choices) => {
     const log = [];
     const i = new Interp(eventId, (choices || []).slice(), log);
-    i.run($dataEPEventsMap.events[MAKER].pages[2].list);
+    i.run($dataEPEventsMap.events[template].pages[2].list);
     if (i.choices.length) fail("the event did not ask for all the choices the test prepared");
     return log;
 };
-const show = (title, log) => realLog("   " + title.padEnd(44) + log.join(" | "));
+const show = (title, log) => realLog("   " + title.padEnd(46) + log.join(" | "));
 const place = (itemId, mapId) => {                              // what the game does when an item is used and put down
     state.map = mapId;
-    PKD_EPManager.Start(MAKER, itemId);
+    PKD_EPManager.Start(PLACEMENT[itemId], itemId);
     const data = PKD_EPManager.CurrentPlacementItemData();
     const ok = PKD_EPManager.wteIsCurrentMapValid();
     let eventId = 0;
     if (ok) { eventId = $gameTemp._epSpawned.eventId(); PKD_EPManager.PlaceItemOn(5, 5); }
     PKD_EPManager.Stop();
-    return { ok, eventId, regions: data.onlyRegions.join(",") };
+    return { ok, eventId, regions: data.onlyRegions.join(","), over: data.spawnOverEventsTypes };
 };
 const sv = (eventId, id) => $gameVariables.selfValue([state.map, eventId, id]);
 
@@ -240,22 +259,26 @@ const sv = (eventId, id) => $gameVariables.selfValue([state.map, eventId, id]);
 realLog("A. Espresso + CoffeeMachines: what is added");
 boot(["Espresso", "CoffeeMachines"]);
 if (!CoffeeMachines.enabled) fail("mod did not switch itself on");
-const coffeeM = $dataItems[1401], espressoM = $dataItems[1402];
-for (const [slot, name, price] of [[1401, "Coffee Machine", 20], [1402, "Espresso Machine", 30]]) {
-    const it = $dataItems[slot];
-    realLog(`   slot ${slot}: ${JSON.stringify(vanilla.items[slot].name)} -> ${JSON.stringify(it.name)}, price ${it.price}, icon ${it.iconIndex}, use event ${it.effects[0].dataId}`);
-    realLog("      " + it.description.replace(/\\c\[\d+\]/g, "").replace("\n", " / "));
-    if (it.name !== name || it.price !== price || it.id !== slot || it.consumable || it.effects[0].code !== 44) fail("item " + slot + " wrong");
+{
+    const it = $dataItems[COFFEE_MACHINE];
+    realLog(`   slot ${COFFEE_MACHINE}: ${JSON.stringify(vanilla.items[COFFEE_MACHINE].name)} -> ${JSON.stringify(it.name)}, price ${it.price}, icon ${it.iconIndex}, use event ${it.effects[0].dataId}`);
+    realLog("      " + plain(it.description));
+    if (it.name !== "Coffee Machine" || it.price !== 20 || it.id !== COFFEE_MACHINE || it.consumable || it.effects[0].code !== 44) fail("Coffee Machine item wrong");
     const ev = $dataCommonEvents[it.effects[0].dataId];
     const cmd = ev && ev.list.find(c => c.code === 357 && c.parameters[1] === "PlacePocketEvent");
-    if (!ev || ev.id < vanilla.events.length || !cmd || cmd.parameters[3].gameItemId !== String(slot) || cmd.parameters[3].placementItemId !== String(MAKER)) fail("use event of " + name + " wrong");
+    if (!ev || ev.id < vanilla.events.length || !cmd || cmd.parameters[3].gameItemId !== String(COFFEE_MACHINE) || cmd.parameters[3].placementItemId !== String(MAKER)) fail("use event of the Coffee Machine wrong");
+    const was = vanilla.items[ESPRESSO_MACHINE], now = $dataItems[ESPRESSO_MACHINE];
+    realLog(`   item ${ESPRESSO_MACHINE} ${JSON.stringify(now.name)} (the game's own): icon ${now.iconIndex}, price ${now.price}, description`);
+    realLog("      " + plain(was.description) + "  ->  " + plain(now.description));
+    if (!same(Object.assign({}, was, { description: "" }), Object.assign({}, now, { description: "", meta: undefined })) || was.description === now.description) fail("only the description of the game's Espresso Machine may change");
 }
 let changed = [];
 for (let i = 1; i < vanilla.items.length; i++) if (!same(vanilla.items[i], Object.assign({}, $dataItems[i], { meta: undefined }))) changed.push(i);
-if (!same(changed, [1400, 1401, 1402]) || $dataItems.length !== vanilla.items.length) fail("items changed: " + changed);
+if (!same(changed, [1400, COFFEE_MACHINE, ESPRESSO_MACHINE]) || $dataItems.length !== vanilla.items.length) fail("items changed: " + changed);
+if ($dataItems[1402].name !== "Empty") fail("slot 1402 should stay blank");
 for (let i = 0; i < vanilla.events.length; i++) if (!same(vanilla.events[i], $dataCommonEvents[i])) fail("common event " + i + " was changed");
 realLog("   common events added: " + $dataCommonEvents.slice(vanilla.events.length).map(e => `${e.id} "${e.name}" (${e.list.length} commands)`).join(", "));
-if ($dataCommonEvents.length !== vanilla.events.length + 4) fail("expected 4 added common events (1 Espresso, 3 here)");
+if ($dataCommonEvents.length !== vanilla.events.length + 3) fail("expected 3 added common events (1 Espresso, 2 here)");
 $dataCommonEvents.slice(vanilla.events.length).forEach((e, i) => { if (e.id !== vanilla.events.length + i) fail("added event has the wrong id"); });
 
 let templateChanges = 0;
@@ -265,13 +288,16 @@ vanilla.templates.events.forEach((ev, i) => {
         const now = $dataEPEventsMap.events[i].pages[p];
         if (same(pg, now)) return;
         templateChanges++;
-        if (i !== MAKER || p !== 2) return fail(`template ${i} page ${p} changed`);
-        if (!same(now.list.slice(5), pg.list) || !same(Object.assign({}, now, { list: 0 }), Object.assign({}, pg, { list: 0 }))) fail("Coffee Maker page: more than the 5 leading commands changed");
-        realLog("   Coffee Maker template page 2: 5 commands added in front -> " + now.list.slice(0, 5).map(c => c.code).join(",") + ", calls event " + now.list[1].parameters[0]);
+        if ((i !== MAKER && i !== ESPRESSO) || p !== 2) return fail(`template ${i} page ${p} changed`);
+        const rest = Object.assign({}, now, { list: 0 }), restWas = Object.assign({}, pg, { list: 0 });
+        if (i === ESPRESSO) { if (pg.through !== true || now.through !== false) fail("Espresso Machine page: 'through' should go from on to off"); restWas.through = false; }
+        if (!same(now.list.slice(5), pg.list) || !same(rest, restWas)) fail(`template ${i} page: more than the 5 leading commands changed`);
+        realLog(`   ${ev.name} template page 2: 5 commands added in front -> ${now.list.slice(0, 5).map(c => c.code).join(",")}, calls event ${now.list[1].parameters[0]}` +
+            (i === ESPRESSO ? "; no longer walk-through" : "") + `\n      condition: ${now.list[0].parameters[1]}`);
     });
     if ($dataEPEventsMap.events[i].pages.length !== ev.pages.length) fail("template " + i + " page count changed");
 });
-if (templateChanges !== 1) fail("expected exactly one changed template page, got " + templateChanges);
+if (templateChanges !== 2) fail("expected exactly two changed template pages, got " + templateChanges);
 const tpl = Eli.ChoiceManager.parameters.templates.coffeemachine;
 const pics = tpl ? JSON.parse(tpl.choiceList).map(e => JSON.parse(e).backEnabledImage.split("/").pop()) : [];
 realLog("   choice box \"coffeemachine\": " + pics.join(", "));
@@ -282,68 +308,85 @@ if (JSON.parse(Eli.ChoiceManager.parameters.templates.coffee.choiceList).length 
 realLog("\nB. Placing");
 const keg = PKD_EasyPlacement.PARAMS.ITEMS.find(e => e && $dataEPEventsMap.events[e.eventId].name === "Keg").onlyRegions.join(",");
 const narrow = PKD_EasyPlacement.PARAMS.ITEMS[MAKER].onlyRegions.join(",");
-state.bag = { 2044: 5, 1401: 5, 1402: 5 };
-const rows = [["Coffee Maker", 2044, FARM, false, narrow], ["Coffee Machine", 1401, FARM, true, keg], ["Coffee Maker", 2044, FARM, false, narrow],
-    ["Espresso Machine", 1402, FARM, true, keg], ["Coffee Machine", 1401, TOWN, false, keg], ["Coffee Maker", 2044, HOME, true, narrow], ["Coffee Machine", 1401, HOME, true, keg]];
+state.bag = { [COFFEE_MAKER]: 5, [COFFEE_MACHINE]: 5, [ESPRESSO_MACHINE]: 5 };
+const rows = [["Coffee Maker", COFFEE_MAKER, FARM, false, narrow], ["Coffee Machine", COFFEE_MACHINE, FARM, true, keg], ["Coffee Maker", COFFEE_MAKER, FARM, false, narrow],
+    ["Espresso Machine", ESPRESSO_MACHINE, FARM, true, keg], ["Espresso Machine", ESPRESSO_MACHINE, TOWN, false, keg], ["Coffee Machine", COFFEE_MACHINE, TOWN, false, keg],
+    ["Coffee Maker", COFFEE_MAKER, HOME, true, narrow], ["Coffee Machine", COFFEE_MACHINE, HOME, true, keg], ["Espresso Machine", ESPRESSO_MACHINE, HOME, true, keg]];
 const eventsPlaced = {};
 for (const [name, item, mapId, want, regions] of rows) {
     const r = place(item, mapId);
     realLog(`   ${name.padEnd(17)} on map ${String(mapId).padEnd(3)} ${r.ok ? "allowed" : "refused"}   regions ${r.regions}`);
     if (r.ok !== want || r.regions !== regions) fail(`${name} on map ${mapId}: expected ${want ? "allowed" : "refused"} with regions ${regions}`);
+    if (item === ESPRESSO_MACHINE && r.over !== PKD_EasyPlacement.PARAMS.ITEMS[ESPRESSO].spawnOverEventsTypes) fail("Espresso Machine lost its 'can stand on tables' rule");
     if (r.ok) {
         eventsPlaced[item + ":" + mapId] = r.eventId;
         const marker = $gameVariables.selfValue([mapId, r.eventId, 1286]);
-        if (marker !== (item === 2044 ? 0 : item)) fail(`${name}: marker is ${marker}`);
+        if (marker !== (item === COFFEE_MAKER ? 0 : item)) fail(`${name}: marker is ${marker}`);
     }
 }
-if (PKD_EasyPlacement.PARAMS.ITEMS[MAKER].onlyRegions.join(",") !== narrow) fail("the Coffee Maker's own placement rules were changed");
-if (state.placed.some(p => p.placement !== MAKER || p.selfSwitch !== "D")) fail("a machine was not placed as the Coffee Maker object");
-if (state.bag[1401] !== 3 || state.bag[1402] !== 4 || state.bag[2044] !== 4) fail("placing did not use up the right items: " + JSON.stringify(state.bag));
+if (PKD_EasyPlacement.PARAMS.ITEMS[MAKER].onlyRegions.join(",") !== narrow || PKD_EasyPlacement.PARAMS.ITEMS[ESPRESSO].onlyRegions.join(",") !== narrow) fail("the game's own placement rules were changed");
+if (state.placed.some(p => p.selfSwitch !== "D") || !same(state.placed.map(p => p.placement), [MAKER, ESPRESSO, MAKER, MAKER, ESPRESSO])) fail("objects were not placed as the game's own Coffee Maker / Espresso Machine: " + state.placed.map(p => p.placement));
+if (state.bag[COFFEE_MACHINE] !== 3 || state.bag[ESPRESSO_MACHINE] !== 3 || state.bag[COFFEE_MAKER] !== 4) fail("placing did not use up the right items: " + JSON.stringify(state.bag));
 
 // ============================ C. using the machines ============================
 realLog("\nC. Using a Coffee Machine (on the Farm)");
 state.map = FARM;
-const cm = eventsPlaced["1401:" + FARM];
+const cm = eventsPlaced[COFFEE_MACHINE + ":" + FARM];
 state.vars[133] = 1000; state.bag = {};
-let log = use(cm, [0]); show("empty, no beans, choose brew:", log);
+let log = use(MAKER, cm, [0]); show("empty, no beans, choose brew:", log);
 if (!log.some(l => /Not enough Coffee Bean/.test(l)) || !log.some(l => /Requires 1 Coffee Bean to produce 1 Cup of Coffee/.test(l)) || CoffeeMachines.state({ getSv: id => sv(cm, id) }) !== 0) fail("no-beans message wrong");
 if (!/"coffeemachine" with 3 options, cancel = option 2/.test(log.join())) fail("choice box wrong");
 state.bag = { 1220: 1, 1601: 2 };
-log = use(cm, [2]); show("empty, choose cancel:", log);
+log = use(MAKER, cm, [2]); show("empty, choose cancel:", log);
 if (!same(state.bag, { 1220: 1, 1601: 2 }) || sv(cm, 108)) fail("cancel changed something");
-log = use(cm, [0]); show("empty, choose brew:", log);
+log = use(MAKER, cm, [0]); show("empty, choose brew:", log);
 if (!same(state.bag, { 1220: 1, 1601: 1 })) fail("should take one of the cheapest beans: " + JSON.stringify(state.bag));
 if (sv(cm, 107) !== 2043 || sv(cm, 108) !== 1 || sv(cm, 106) !== 1060 || !log.includes("toast: Check back in 1 hour")) fail("brewing state wrong");
 state.vars[133] = 1030;
-log = use(cm, []); show("30 minutes later:", log);
+log = use(MAKER, cm, []); show("30 minutes later:", log);
 if (!same(log, ["toast: Ready in 30 min"]) || sv(cm, 108) !== 1) fail("brewing message wrong");
 state.vars[133] = 1060;
-log = use(cm, []); show("60 minutes later:", log);
+log = use(MAKER, cm, []); show("60 minutes later:", log);
 if (state.bag[2043] !== 1 || sv(cm, 108) || sv(cm, 107) || sv(cm, 106) || !log.includes("call: Crafting Quest Checks")) fail("collecting wrong");
-if (sv(cm, 1286) !== 1401) fail("machine marker lost after collecting");
-log = use(cm, [1]); show("empty, choose pick up:", log);
-if (state.bag[1401] !== 1 || !log.includes("plugin: RemovePocketEvent2") || sv(cm, 1286) || sv(cm, 24)) fail("pick up wrong: " + JSON.stringify(state.bag));
+if (sv(cm, 1286) !== COFFEE_MACHINE) fail("machine marker lost after collecting");
+log = use(MAKER, cm, [1]); show("empty, choose pick up:", log);
+if (state.bag[COFFEE_MACHINE] !== 1 || !log.includes("plugin: RemovePocketEvent2") || sv(cm, 1286) || sv(cm, 24)) fail("pick up wrong: " + JSON.stringify(state.bag));
 
-realLog("\n   Espresso Machine (on the Farm)");
-const em = eventsPlaced["1402:" + FARM];
+realLog("\n   The Espresso Machine (on the Farm)");
+const em = eventsPlaced[ESPRESSO_MACHINE + ":" + FARM];
 state.bag = { 1601: 1 };
-log = use(em, [0]); show("empty, 1 bean, choose brew:", log);
+log = use(ESPRESSO, em, [0]); show("empty, 1 bean, choose brew:", log);
 if (!log.some(l => /Requires 2 Coffee Bean to produce 1 Espresso/.test(l)) || state.bag[1601] !== 1) fail("espresso needs 2 beans");
 state.bag = { 1601: 1, 1208: 3 };
-log = use(em, [0]); show("empty, 4 beans, choose brew:", log);
+log = use(ESPRESSO, em, [0]); show("empty, 4 beans, choose brew:", log);
 if (!same(state.bag, { 1208: 2 }) || sv(em, 107) !== 1400) fail("espresso brew wrong: " + JSON.stringify(state.bag));
 state.vars[133] += 60;
-log = use(em, []); show("60 minutes later:", log);
+log = use(ESPRESSO, em, []); show("60 minutes later:", log);
 if (state.bag[1400] !== 1) fail("no espresso handed over");
-log = use(em, [1]); show("pick up:", log);
-if (state.bag[1402] !== 1) fail("espresso machine not handed back");
+log = use(ESPRESSO, em, [1]); show("pick up:", log);
+if (state.bag[ESPRESSO_MACHINE] !== 1 || log.includes("call: Deco Pickup")) fail("espresso machine not handed back by the machine's own menu");
+state.self[[FARM, 950, 24]] = 1;                                   // one that was placed as a decoration before the mod
+log = use(ESPRESSO, 950, [2]); show("one placed before the mod, cancel:", log);
+if (!/"coffeemachine" with 3 options/.test(log.join()) || sv(950, 1286) !== ESPRESSO_MACHINE) fail("an Espresso Machine from before the mod should work as a machine");
 
 realLog("\n   An ordinary Coffee Maker (in the Home)");
 state.map = HOME;
-log = use(eventsPlaced["2044:" + HOME], [3]); show("use, choose cancel:", log);
+log = use(MAKER, eventsPlaced[COFFEE_MAKER + ":" + HOME], [3]); show("use, choose cancel:", log);
 if (!/"coffee" with 4 options, cancel = option 3/.test(log.join()) || !log.includes("call: Set Choice Box Coords")) fail("the Coffee Maker no longer behaves as in the game");
-log = use(eventsPlaced["2044:" + HOME], [2]); show("use, choose pick up:", log);
+log = use(MAKER, eventsPlaced[COFFEE_MAKER + ":" + HOME], [2]); show("use, choose pick up:", log);
 if (!log.includes("give: 1 x Coffee Maker (item 2044)")) fail("Coffee Maker pick up changed");
+
+realLog("\n   Left over from version 1.0 (an Espresso Machine that was its own item, placed as a Coffee Maker)");
+state.self[[HOME, 960, 1286]] = 1402; state.self[[HOME, 960, 24]] = 1; state.bag = { 1208: 2 };
+log = use(MAKER, 960, [0]); show("placed one, choose brew:", log);
+if (sv(960, 107) !== 1400 || state.bag[1208]) fail("old espresso machine should still brew espresso from 2 beans");
+state.vars[133] += 60; use(MAKER, 960, []);
+log = use(MAKER, 960, [1]); show("placed one, pick up:", log);
+if (!log.includes("give: 1 x Espresso Machine (item 2591)")) fail("old espresso machine should pick up as the game's Espresso Machine");
+state.bag = { 1402: 2, [ESPRESSO_MACHINE]: 1 };
+DataManager.extractSaveContents({});
+realLog("   two old ones in the bag when a save is loaded -> bag: " + JSON.stringify(state.bag));
+if (!same(state.bag, { [ESPRESSO_MACHINE]: 3 })) fail("old items in the bag were not converted");
 
 // ============================ D. the shop ============================
 realLog("\nD. Shops");
@@ -351,42 +394,84 @@ const shopNames = JSON.parse(params("DM_CoreShop")["Shop Manager"]).map(s => JSO
 new Scene_CoreShop().create();
 shopNames.forEach((name, i) => {
     $gameShop._tempShopId = i;
-    const goods = $gameShop.storedGoods(), mine = goods.filter(g => g.id === 1401 || g.id === 1402);
+    const goods = $gameShop.storedGoods(), mine = goods.filter(g => g.id === COFFEE_MACHINE || g.id === ESPRESSO_MACHINE);
     const want = name === "General Store" ? 2 : 0;
     if (mine.length !== want) fail(`shop ${i + 1} "${name}" lists ${mine.length} machines`);
     if (want) {
         realLog(`   shop ${i + 1} "${name}": ` + mine.map(g => `${g.name} ${g.price} gold (stock ${g.amount === "" ? "unlimited" : g.amount})`).join(", "));
         if (!same(mine.map(g => g.price), [20, 30]) || goods.length !== $gameShop._coreShops[i]._storedContents.length + 2) fail("shop goods wrong");
-        if ($gameShop.storedGoods().find(g => g.id === 1401) !== mine[0]) fail("goods are rebuilt on every call");
+        if ($gameShop.storedGoods().find(g => g.id === COFFEE_MACHINE) !== mine[0]) fail("goods are rebuilt on every call");
     }
-    if ($gameShop._coreShops[i]._storedContents.some(g => g.id === 1401 || g.id === 1402)) fail("the saved stock of shop " + (i + 1) + " was changed");
+    if ($gameShop._coreShops[i]._storedContents.some(g => g.id === COFFEE_MACHINE || g.id === ESPRESSO_MACHINE)) fail("the saved stock of shop " + (i + 1) + " was changed");
 });
+if ($dataItems[ESPRESSO_MACHINE].price !== vanilla.items[ESPRESSO_MACHINE].price) fail("the Espresso Machine's own value was changed");
 
-// ============================ E. without the Espresso mod ============================
-realLog("\nE. CoffeeMachines without the Espresso mod");
+// ============================ E. how the Espresso Machine looks ============================
+realLog("\nE. The Espresso Machine on screen");
+const espressoSheet = vanilla.templates.events[ESPRESSO].pages[2].image.characterName, makerSheet = vanilla.templates.events[MAKER].pages[2].image.characterName;
+const object = (template, x, y, sheet) => ({ x, y, event: () => $dataEPEventsMap.events[template], characterName: () => sheet });
+const frames = (sprite, n) => { for (let i = 0; i < n; i++) sprite.updateBitmap(); };
+const floorOne = object(ESPRESSO, 3, 3, espressoSheet), tableOne = object(ESPRESSO, 6, 3, espressoSheet), table = { x: 6, y: 3, type: "table" };
+const rugOne = object(ESPRESSO, 8, 3, espressoSheet), rug = { x: 8, y: 3, type: "lower" };
+const cafe = { x: 9, y: 9, event: () => ({ name: "EV012" }), characterName: () => espressoSheet };       // a map's own event using the same picture
+const makerOne = object(MAKER, 1, 1, makerSheet);
+state.mapEvents = [floorOne, tableOne, table, cafe, makerOne, rugOne, rug];
+const sprites = [floorOne, tableOne, cafe, makerOne, rugOne].map(c => new Sprite_Character(c));
+sprites.forEach(s => frames(s, 2));
+const describe = s => (s.bitmap.name ? "the game's picture" : "espresso machine on a counter, drawn from: " + s.bitmap.drawn.map(n => n.split("/").pop()).join(" + "));
+realLog("   alone on its tile:      " + describe(sprites[0]));
+realLog("   on a table:             " + describe(sprites[1]));
+realLog("   on a rug:               " + describe(sprites[4]));
+if (sprites[4].bitmap.name) fail("an Espresso Machine on a rug stands on the floor");
+realLog("   same picture, other map event: " + describe(sprites[2]));
+if (sprites[0].bitmap.name || !same(sprites[0].bitmap.drawn, [makerSheet, espressoSheet]) || sprites[0].bitmap.width !== 48 || sprites[0].bitmap.height !== 128 || sprites[0].bitmap.smooth !== false) fail("floor-standing Espresso Machine should get the counter picture");
+if (sprites[1].bitmap.name !== espressoSheet || sprites[2].bitmap.name !== espressoSheet || sprites[3].bitmap.name !== makerSheet) fail("only a floor-standing placed Espresso Machine may change its picture");
+state.mapEvents.push({ x: 3, y: 3, type: "table" });                 // a table is put under the first one
+frames(sprites[0], 25);
+state.mapEvents = state.mapEvents.filter(e => e !== table);         // and the other one's table is taken away
+frames(sprites[1], 25);
+realLog("   after a table is put under the first and taken from the second: " + (sprites[0].bitmap.name ? "plain" : "counter") + ", " + (sprites[1].bitmap.name ? "plain" : "counter"));
+if (sprites[0].bitmap.name !== espressoSheet || sprites[1].bitmap.name) fail("the picture should follow the table");
+if (sprites[1].bitmap !== sprites[1].bitmap || ImageManager.loadCharacter(espressoSheet).drawn.length) fail("the game's own sprite sheet was drawn on");
+
+// ============================ F. without the Espresso mod ============================
+realLog("\nF. CoffeeMachines without the Espresso mod");
 boot(["CoffeeMachines"]);
-realLog(`   slot 1401: ${JSON.stringify($dataItems[1401].name)}, slot 1402: ${JSON.stringify($dataItems[1402].name)}, enabled: ${CoffeeMachines.enabled}`);
-if ($dataItems[1401].name !== "Coffee Machine" || $dataItems[1402].name !== "Empty" || !CoffeeMachines.enabled) fail("coffee machine should work alone");
+realLog(`   slot ${COFFEE_MACHINE}: ${JSON.stringify($dataItems[COFFEE_MACHINE].name)}, Espresso Machine untouched: ${same(vanilla.items[ESPRESSO_MACHINE], Object.assign({}, $dataItems[ESPRESSO_MACHINE], { meta: undefined }))}, enabled: ${CoffeeMachines.enabled}`);
+if ($dataItems[COFFEE_MACHINE].name !== "Coffee Machine" || !CoffeeMachines.enabled) fail("coffee machine should work alone");
+if (!same(vanilla.items[ESPRESSO_MACHINE], Object.assign({}, $dataItems[ESPRESSO_MACHINE], { meta: undefined })) || !same(vanilla.templates.events[ESPRESSO], $dataEPEventsMap.events[ESPRESSO])) fail("without Espresso the game's Espresso Machine must stay a decoration");
 if ($dataCommonEvents.length !== vanilla.events.length + 2) fail("expected 2 added common events");
-$gameShop._tempShopId = 1;
-if ($gameShop.storedGoods().filter(g => g.id === 1401 || g.id === 1402).length !== 1) fail("shop should list only the Coffee Machine");
+$gameShop._tempShopId = 13;
+if (!same($gameShop.storedGoods().filter(g => g.id === COFFEE_MACHINE || g.id === ESPRESSO_MACHINE).map(g => g.id), [COFFEE_MACHINE])) fail("shop should list only the Coffee Machine");
+state.map = HOME; state.self[[HOME, 970, 24]] = 1;
+log = use(ESPRESSO, 970, []); show("a placed Espresso Machine:", log);
+if (!same(log, ["call: Deco Pickup"])) fail("should be the game's plain decoration");
+const lone = new Sprite_Character({ x: 2, y: 2, event: () => $dataEPEventsMap.events[ESPRESSO], characterName: () => vanilla.templates.events[ESPRESSO].pages[2].image.characterName });
+state.mapEvents = [lone._character]; lone.updateBitmap(); lone.updateBitmap();
+if (!lone.bitmap.name) fail("no counter picture without the Espresso mod");
 
-// ============================ F. safety switches ============================
-realLog("\nF. Safety");
-boot(["Espresso", "CoffeeMachines"], () => { $dataItems[1401].name = "Something New"; });
+// ============================ G. safety switches ============================
+realLog("\nG. Safety");
+boot(["Espresso", "CoffeeMachines"], () => { $dataItems[COFFEE_MACHINE].name = "Something New"; });
 realLog("   slot 1401 taken by a game update -> enabled: " + CoffeeMachines.enabled + " | " + (state.warnings.find(w => /CoffeeMachines/.test(w)) || ""));
-if (CoffeeMachines.enabled || $dataItems[1402].name !== "Empty" || !same($dataEPEventsMap, vanilla.templates) || $dataCommonEvents.length !== vanilla.events.length + 1) fail("mod should have done nothing");
-$gameShop._tempShopId = 1;
-if ($gameShop.storedGoods().some(g => g.id === 1401 || g.id === 1402)) fail("disabled mod still sells machines");
+if (CoffeeMachines.enabled || !same($dataEPEventsMap, vanilla.templates) || $dataCommonEvents.length !== vanilla.events.length + 1 || $dataItems[ESPRESSO_MACHINE].description !== vanilla.items[ESPRESSO_MACHINE].description) fail("mod should have done nothing");
+$gameShop._tempShopId = 13;
+if ($gameShop.storedGoods().some(g => g.id === COFFEE_MACHINE || g.id === ESPRESSO_MACHINE)) fail("disabled mod still sells machines");
 boot(["Espresso", "CoffeeMachines"], () => { $dataSystem.variables[1286] = "SV: Something else"; });
 realLog("   marker variable renamed by a game update -> enabled: " + CoffeeMachines.enabled);
 if (CoffeeMachines.enabled || !same($dataEPEventsMap, vanilla.templates)) fail("mod should have done nothing");
+boot(["Espresso", "CoffeeMachines"], () => { $dataItems[ESPRESSO_MACHINE].name = "Latte Machine"; });
+realLog("   the game's Espresso Machine renamed by a game update -> Coffee Machine still on: " + CoffeeMachines.enabled + ", Espresso Machine template untouched: " + same($dataEPEventsMap.events[ESPRESSO], vanilla.templates.events[ESPRESSO]));
+if (!CoffeeMachines.enabled || !same($dataEPEventsMap.events[ESPRESSO], vanilla.templates.events[ESPRESSO])) fail("only the espresso part should switch off");
 
-// A save with a placed machine, opened without the mod: it is a Coffee Maker.
+// A save with placed machines, opened without the mod.
 boot([]);
-state.map = FARM; state.self[[FARM, 900, 1286]] = 1401; state.self[[FARM, 900, 24]] = 1;
-log = use(900, [2]); show("machine in a save, mod removed, pick up:", log);
-if (!log.includes("give: 1 x Coffee Maker (item 2044)")) fail("without the mod a placed machine should be a Coffee Maker");
+state.map = FARM; state.self[[FARM, 900, 1286]] = COFFEE_MACHINE; state.self[[FARM, 900, 24]] = 1;
+log = use(MAKER, 900, [2]); show("Coffee Machine in a save, mod removed, pick up:", log);
+if (!log.includes("give: 1 x Coffee Maker (item 2044)")) fail("without the mod a placed Coffee Machine should be a Coffee Maker");
+state.self[[FARM, 901, 1286]] = ESPRESSO_MACHINE; state.self[[FARM, 901, 24]] = 1; state.self[[FARM, 901, 108]] = 1;
+log = use(ESPRESSO, 901, []); show("Espresso Machine in a save, mod removed:", log);
+if (!same(log, ["call: Deco Pickup"])) fail("without the mod a placed Espresso Machine should be a decoration");
 
 realLog(`\nproblems: ${problems}`);
 process.exit(problems ? 1 : 0);

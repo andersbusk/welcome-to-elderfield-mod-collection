@@ -39,4 +39,4 @@ This is the only mod in the collection that adds something new, so it is built t
   switches itself off, and leaves the new item alone.
 - **Hidden from the encyclopedia**, so its completion count stays as in the unmodded game.
 
-The [`CoffeeMachines`](../CoffeeMachines/README.md) mod adds an Espresso Machine that brews this drink from 2 Coffee Beans.
+The [`CoffeeMachines`](../CoffeeMachines/README.md) mod makes the game's Espresso Machine brew this drink from 2 Coffee Beans.
