@@ -76,7 +76,7 @@ Each mod has its own README with the full details.
 | Mod | What it does |
 |---|---|
 | [`LessGrind`](mods/LessGrind/README.md) | Tool upgrades need 1 of each material. Cheap Greater Offering of Rain and Preserving Barrel. Barrel, Keg and Cask finish in a day. Cheaper, bigger trough upgrades. Coffee lasts 24 hours and is a little faster |
-| [`LessGrindHits`](mods/LessGrindHits/README.md) | Fewer swings for pickaxe, axe and scythe. Stone breaks in one hit, nothing takes more than 6. Felled trees fall in 0.4 seconds instead of 2.2 |
+| [`LessGrindHits`](mods/LessGrindHits/README.md) | Fewer swings for pickaxe, axe and scythe. Stone breaks in one hit, nothing takes more than 6. Felled trees fall in about 1 second instead of 2.2, and you can walk while they fall |
 | [`HigherDrops`](mods/HigherDrops/README.md) | Ore rocks, stone and grass drop more: coal about four times as much, copper a bit more, iron as much as coal used to give, stone 1-4, big rocks 15-25, weeds doubled. Dead leaves, bitter herb, bloodberries and mushrooms give 2-4 per pick |
 | [`CheapKiosk`](mods/CheapKiosk/README.md) | The Eldritch Slime shopkeeper in the mall sells every item for 1 gold |
 | [`Espresso`](mods/Espresso/README.md) | A new drink from the Coffee Maker with a stronger speed boost than coffee |

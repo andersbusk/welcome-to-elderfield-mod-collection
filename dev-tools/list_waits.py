@@ -12,7 +12,8 @@ sys.stdout.reconfigure(encoding="utf-8")
 ce = json.load(open("data/CommonEvents.json", encoding="utf-8"))
 sysd = json.load(open("data/System.json", encoding="utf-8"))
 ROUTE = {1: "down", 2: "left", 3: "right", 4: "up", 12: "fwd", 13: "back", 14: "jump", 15: "wait", 16: "turn down", 17: "turn left",
-         18: "turn right", 19: "turn up", 29: "speed", 30: "freq", 33: "walk anim on", 34: "walk anim off", 35: "dir fix on",
+         18: "turn right", 19: "turn up", 29: "speed", 30: "freq", 31: "walk anim on", 32: "walk anim off", 33: "step anim on",
+         34: "step anim off", 35: "dir fix on",
          36: "dir fix off", 37: "through on", 38: "through off", 39: "transparent on", 40: "transparent off", 41: "image",
          42: "opacity", 43: "blend", 44: "SE", 45: "script"}
 
