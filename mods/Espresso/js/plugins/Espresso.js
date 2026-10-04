@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc [Espresso] Adds Espresso, Double Espresso and Triple Espresso: stronger, 24-hour versions of the Cup of Coffee speed boost.
+ * @plugindesc [Espresso] Adds Espresso, Double Espresso and Triple Espresso: stronger versions of the Cup of Coffee speed boost that last 8 hours.
  * @author Anders
  *
  * @help
@@ -55,7 +55,7 @@
     ];
 
     // In-game hours the boost lasts.
-    const ESPRESSO_HOURS = 24;
+    const ESPRESSO_HOURS = 8;
     // ========================================================================
     // END CONFIG
     // ========================================================================

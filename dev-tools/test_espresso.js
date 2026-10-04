@@ -141,14 +141,14 @@ if (!near(g.speeds(8).walk, 5.0)) fail("coffee diagonal compensation wrong: " + 
 $gameTime.h = 105;
 g.drinkEspresso();
 realLog("   espresso at hour 105:", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
-if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 }) || g.entry().gameTime.h !== 129 || !g.entry().espresso) fail("espresso wrong");
+if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 }) || g.entry().gameTime.h !== 113 || !g.entry().espresso) fail("espresso wrong");
 if (EspressoMod.pending) fail("pending flag not cleared");
 $gameTime.h = 110;
 g.drinkCoffee();
 realLog("   coffee at hour 110 while espresso runs:", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
-if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 }) || g.entry().gameTime.h !== 129 || !g.entry().espresso) fail("coffee replaced a running espresso");
+if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 }) || g.entry().gameTime.h !== 113 || !g.entry().espresso) fail("coffee replaced a running espresso");
 g.hero._states = []; g.hero._wteIgnoreTimerRefresh = true; g.hero.addState(243); g.hero._wteIgnoreTimerRefresh = false;
-if (g.entry().gameTime.h !== 129 || !g.entry().espresso || !same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 })) fail("full-heal re-apply changed the espresso");
+if (g.entry().gameTime.h !== 113 || !g.entry().espresso || !same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 })) fail("full-heal re-apply changed the espresso");
 g.player._wteIsCutscene = true;
 if (g.player.realMoveSpeed() !== 4) fail("cutscene speed was overridden");
 g.player._wteIsCutscene = false;
@@ -157,18 +157,18 @@ if (!same(g.speeds(), { walk: 4, run: 4.5, bike: 5 })) fail("speeds not back to 
 // the stronger drinks, and which drink wins when one is already running
 $gameTime.h = 300; g.drinkDouble();
 realLog("   double espresso at hour 300:", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
-if (!same(g.speeds(), { walk: 4.85, run: 5.5, bike: 6 }) || g.entry().gameTime.h !== 324) fail("double espresso wrong");
+if (!same(g.speeds(), { walk: 4.85, run: 5.5, bike: 6 }) || g.entry().gameTime.h !== 308) fail("double espresso wrong");
 $gameTime.h = 305; g.drinkEspresso();
 realLog("   espresso at hour 305 while the double runs:", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
-if (!same(g.speeds(), { walk: 4.85, run: 5.5, bike: 6 }) || g.entry().gameTime.h !== 324) fail("a weaker espresso replaced a running double");
+if (!same(g.speeds(), { walk: 4.85, run: 5.5, bike: 6 }) || g.entry().gameTime.h !== 308) fail("a weaker espresso replaced a running double");
 $gameTime.h = 310; g.drinkTriple();
 realLog("   triple espresso at hour 310:", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
-if (!same(g.speeds(), { walk: 4.85, run: 5.7, bike: 6.3 }) || g.entry().gameTime.h !== 334) fail("triple espresso wrong");
+if (!same(g.speeds(), { walk: 4.85, run: 5.7, bike: 6.3 }) || g.entry().gameTime.h !== 318) fail("triple espresso wrong");
 $gameTime.h = 315; g.drinkCoffee(); g.drinkDouble();
-if (!same(g.speeds(), { walk: 4.85, run: 5.7, bike: 6.3 }) || g.entry().gameTime.h !== 334) fail("a coffee or a double replaced a running triple");
+if (!same(g.speeds(), { walk: 4.85, run: 5.7, bike: 6.3 }) || g.entry().gameTime.h !== 318) fail("a coffee or a double replaced a running triple");
 $gameTime.h = 320; g.drinkTriple();
 realLog("   another triple at hour 320: ends hour", g.entry().gameTime.h, "(the same drink starts the hours again)");
-if (g.entry().gameTime.h !== 344) fail("the same drink should start the hours again");
+if (g.entry().gameTime.h !== 328) fail("the same drink should start the hours again");
 g.entry().espressoShots = undefined;
 if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 })) fail("a boost saved before the stronger drinks existed should count as a plain espresso");
 g.expire();
@@ -184,7 +184,7 @@ realLog("   coffee:  ", JSON.stringify(g.speeds()), "ends hour", g.entry().gameT
 if (!same(g.speeds(), { walk: 4.4, run: 4.85, bike: 5.16 }) || g.entry().gameTime.h !== 104) fail("vanilla coffee disturbed");
 g.drinkEspresso();
 realLog("   espresso:", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
-if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 }) || g.entry().gameTime.h !== 124) fail("espresso alone wrong");
+if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 }) || g.entry().gameTime.h !== 108) fail("espresso alone wrong");
 if ($dataItems[2043].description !== vanillaItems[2043].description) fail("coffee description changed without LessGrind");
 
 // ============================ C. Slot taken by a game update ============================
