@@ -1,0 +1,7 @@
+{
+  "name": "Faster Mod Loader - no disk check per picture",
+  "author": "Anders",
+  "version": "1.0.1",
+  "description": "With the mod loader on, the game looks in every mod folder on disk for each picture and sound it loads, in case a mod replaces it. This mod reads the mod folders once at start-up and answers those checks from memory, which removes a delay that grows with the number of mods. It also writes frames that take longer than 0.12 seconds to mods-slow-frames.log in the game folder, to help track down freezes. Edit the CONFIG block in js/plugins/FasterModLoader.js.",
+  "priority": 10
+}

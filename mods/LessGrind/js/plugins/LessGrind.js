@@ -142,6 +142,16 @@
     // Set to null to keep the vanilla coffee speeds.
     const COFFEE_SPEED = { walk: 4.5, run: 5.0, bike: 5.5 };
 
+    // --- Equipment ---
+    // Replaces the stats of a piece of equipment. The eight numbers are, in order:
+    //   Max HP, Max MP, Attack, Defense, M. Attack, M. Defense, Agility, Luck
+    // Gems you put on the item are added on top, as usual. type: "armor" or
+    // "weapon"; id and name as in docs/ItemList.csv. [] = change nothing.
+    const EQUIPMENT_STATS = [
+        // Lucky Horseshoe (trinket). Unmodded: -2 Max HP, -2 Defense, -2 M. Defense, +10 Luck.
+        { type: "armor", id: 412, name: "Lucky Horseshoe", stats: [10, 10, 10, 10, 10, 10, 10, 30] }
+    ];
+
     // (How many swings rocks, trees and grass take is handled by the separate
     // LessGrindHits mod.)
     // ========================================================================
@@ -392,6 +402,27 @@
         if (item && typeof item.description === "string") item.description = coffeeText(item.description);
     };
 
+    // Equipment stats. This runs when the weapon / armor file is loaded, which is before the
+    // game's upgrade system takes its copy of the "unmodded" stats. So it sees these numbers
+    // as the item's own, and gem upgrades stored in a save are added on top of them.
+    const patchEquipment = (list, type) => {
+        if (!Array.isArray(list) || list.__lessGrindEquipment) return;
+        list.__lessGrindEquipment = true;
+        for (const entry of (typeof EQUIPMENT_STATS !== "undefined" && EQUIPMENT_STATS) || []) {
+            if (entry.type !== type) continue;
+            // The game writes an upgrade level into some names ("Lucky Horseshoe +1").
+            const matches = (item) => !!item && String(item.name).startsWith(entry.name);
+            const item = matches(list[entry.id]) ? list[entry.id] : list.find(matches);
+            if (!item || !Array.isArray(item.params) || !Array.isArray(entry.stats) || entry.stats.length !== item.params.length) {
+                console.warn(TAG + " Equipment \"" + entry.name + "\" not found or its stats have an unexpected shape; left unchanged.");
+                continue;
+            }
+            const before = item.params.join(", ");
+            item.params = entry.stats.map(n => Math.round(Number(n) || 0));
+            console.log(TAG + " " + item.name + ": stats " + before + " -> " + item.params.join(", ") + ".");
+        }
+    };
+
     const patchCommonEvents = (list) => {
         if (!Array.isArray(list) || list.__lessGrindPatched) return;
         list.__lessGrindPatched = true;
@@ -432,6 +463,8 @@
             _DataManager_onLoad.call(this, object);
             if (typeof $dataCommonEvents !== "undefined" && object === $dataCommonEvents) patchCommonEvents(object);
             else if (typeof $dataItems !== "undefined" && object === $dataItems) patchCoffeeItem(object);
+            else if (typeof $dataArmors !== "undefined" && object === $dataArmors) patchEquipment(object, "armor");
+            else if (typeof $dataWeapons !== "undefined" && object === $dataWeapons) patchEquipment(object, "weapon");
             else if (isMapObject(object)) patchTroughFloor(object);
         };
 
@@ -440,6 +473,8 @@
         DataManager.isDatabaseLoaded = function() {
             const loaded = _DataManager_isDatabaseLoaded.call(this);
             if (loaded && typeof $dataCommonEvents !== "undefined" && $dataCommonEvents) patchCommonEvents($dataCommonEvents);
+            if (loaded && typeof $dataArmors !== "undefined" && $dataArmors) patchEquipment($dataArmors, "armor");
+            if (loaded && typeof $dataWeapons !== "undefined" && $dataWeapons) patchEquipment($dataWeapons, "weapon");
             return loaded;
         };
     } else {

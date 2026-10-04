@@ -71,7 +71,8 @@
 
     // Set by the Espresso's own event right before it adds the Coffee state,
     // so the state hook below knows which drink it was.
-    const shared = window.EspressoMod = { pending: false, enabled: false };
+    // itemId and enabled let other mods (the Espresso Machine) hand out the drink.
+    const shared = window.EspressoMod = { pending: false, enabled: false, itemId: ITEM_SLOT };
 
     const clone = (value) => JSON.parse(JSON.stringify(value));
     const safeParse = (text, fallback) => {

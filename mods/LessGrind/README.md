@@ -17,8 +17,12 @@ Cuts the material grind and the waiting. Costs go down, machines finish sooner, 
 | Trough "Add feed" box | Up to 99 at once | Up to 999 at once |
 | Cup of Coffee, duration | 4 in-game hours | 24 in-game hours |
 | Cup of Coffee, speed (walk / run / bike) | 4.4 / 4.85 / 5.16 | 4.5 / 5.0 / 5.5 |
+| Lucky Horseshoe (trinket) | +10 Luck, -2 Max HP, -2 Defense, -2 M. Defense | +30 Luck, +10 to every other stat |
 
 Speed is the game's own scale, where +1 doubles your speed. Without coffee it is 4.0 / 4.5 / 5.0.
+
+The Lucky Horseshoe's stats are Max HP, Max MP, Attack, Defense, M. Attack, M. Defense and Agility at +10 and Luck at +30.
+Gems you put on it are added on top.
 
 ## Settings
 
@@ -29,6 +33,7 @@ Everything is in the `CONFIG` block at the top of `js/plugins/LessGrind.js`, wit
 - `BARREL_DAYS`, `KEG_DAYS`, `CASK_DAYS_PER_STAGE`, `FIX_OFF_BY_ONE`.
 - `TROUGH_STEP`, `TROUGH_COST_WOOD`, `TROUGH_COST_STONE`, `TROUGH_COST_GOLD`, `TROUGH_RETROACTIVE`.
 - `COFFEE_HOURS`, `COFFEE_SPEED`.
+- `EQUIPMENT_STATS`: a list of equipment with the eight stats each should have. Add a line for any other weapon or armor.
 
 Item IDs for the settings are in [docs/ItemList.csv](../../docs/ItemList.csv).
 
@@ -37,6 +42,7 @@ Item IDs for the settings are in [docs/ItemList.csv](../../docs/ItemList.csv).
 Nothing new is stored in the save. Costs and timers are changed in memory each time the game starts, so removing the mod puts everything back.
 Things you buy or start while it is active stay as normal progress: an upgraded tool, trough capacity, a batch already in a barrel.
 Troughs you upgraded before installing the mod keep their capacity; only new upgrades add the larger amount.
+Equipment stats are not stored either: the save only holds the gems you added, so without the mod the Lucky Horseshoe is the game's own again, plus your gems.
 
 ## Works with
 
