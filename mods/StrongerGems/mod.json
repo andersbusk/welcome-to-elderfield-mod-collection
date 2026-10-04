@@ -1,0 +1,7 @@
+{
+  "name": "Stronger Gems - double bonuses, no level limits",
+  "author": "Anders",
+  "version": "1.0.0",
+  "description": "Upgrade gems (applied at the Anvil in the Workshop) add twice as much: Sharp +4 Attack, Magic +4 M. Attack, Swift +8 Agility, Armor +2 Defense, Blood +6 to +8 Max HP and so on. Any gem works on equipment of any upgrade level, so there is no +15 ceiling. Upgrades already made keep their amounts. Edit the CONFIG block in js/plugins/StrongerGems.js.",
+  "priority": 50
+}

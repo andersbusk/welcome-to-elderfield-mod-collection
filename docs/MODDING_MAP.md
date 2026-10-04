@@ -58,7 +58,8 @@ The game folder is found by the manager; `elderfield-mods game` prints it. A typ
   (wrapped in one `if` block), rewrites the file if it differs, and reloads once. The injector is plugin 416 of 418,
   so mod code runs after every game plugin has loaded, and before the database loads.
 - Order: by `mod.json` `priority` ascending, then folder name descending. Current order (2026-10-02):
-  LessGrindHits (50) -> LessGrind (50) -> HigherDrops (50) -> CheapKiosk (50) -> Espresso (60) -> CoffeeMachines (70).
+  StrongerGems (50) -> LessGrindHits (50) -> LessGrind (50) -> HigherDrops (50) -> CheapKiosk (50) -> Espresso (60)
+  -> CoffeeMachines (70).
 - Folder name starting with `!` = disabled. `Example_Mod` must stay disabled: it replaces home map events 73 and 300.
 - Also supports data splicing (`data\moddedItems.json`, `moddedMap002.json`, ...) and image/audio overrides.
   Not used by our mods; splices replace whole entries by ID and go stale on game updates.
@@ -84,7 +85,7 @@ Rules of thumb:
   If logic must change, switch an operand to a script (code 122 operand type 4, or code 111 type 12).
 - Match commands by exact parameter shape so a game update makes the patch a no-op instead of a wrong edit.
 - Adding content without new IDs: reuse a blank `"Empty"` item slot (1296 exist; 1400 is taken by Espresso,
-  1401 and 1402 by CoffeeMachines),
+  1401 by CoffeeMachines; 1402 was used by its version 1.0),
   append common events at `$dataCommonEvents.length` (ID computed at load, never saved), reuse existing states.
   A new item/state ID that disappears with the mod is what can crash a save.
 
@@ -242,6 +243,13 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
   sorted region list to allowed maps (Coffee Maker `5,8,9,10,11,12,238` = Home only; Keg
   `3,4,5,8,9,10,11,12,13,14,15,238` = Home 2, Farm 34, Workshop 42, Ranch 50). It caches its answer per map and
   placement id in `PKD_EPManager._wteCachedMapValidity`.
+- What can carry other objects is a comment on the event: `placeOverType:table` (18 templates), `lower` (rugs and
+  floors, 87), `shelter` (6); read it with `PKD_EasyPlacement.Utils.GetCommentCodeValue("placeOverType", event)`.
+  A placement entry's `spawnOverEventsTypes` lists what it may stand on. The event note `<shift N>` only changes
+  draw order (WTE_SpriteSortOffset), not the position on screen.
+- Sprites: character sheets named `!$Name` are 3 x 4 cells; `Sprite_Character` computes the cell size from the bitmap,
+  so a same-sized bitmap can be swapped in on the sprite (never on the event, whose image name is saved).
+  `ImageManager.clear()` on map transfer destroys cached bitmaps, so keep a composed bitmap outside the cache.
 - `python dev-tools/find_var.py <id>` shows every reader and writer of a variable; use it before borrowing an `SV:`
   variable. `SV: Item` (1286) is only used by fishing spots, the crab pot and the cask.
 
@@ -319,7 +327,8 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
 | HigherDrops | `HigherDrops.js` | Ore rocks and forage give more: a `DROPS` table of template name -> `[min, max]` replaces the `Amount` line on the rock templates (coal 7-31, copper 2-3, iron 3-8, gold 2-4, dense rocks scaled up, rare ores 1-2, plain `Rock` 1-4, `Big Rock` 15-25, weeds from `Grass` 2-6 and `Big Grass` 8-16; forage through CE 865: `Leaf Pile` and `Herb` 2-4, `Bloodberry` and the twelve mushroom templates 1-4; any pickaxe, axe, scythe or hand-picked template can be listed). Never below the game's own amount for a template. Magic crystals and gem nodes untouched |
 | CheapKiosk | `CheapKiosk.js` | Mall Kiosk (shop 1) sells every tagged item, weapon and armor for 1 gold, A to Z, key items excluded; in-memory catalogue |
 | Espresso | `Espresso.js` | New drink in blank item slot 1400, Coffee Maker recipe (6 beans), reuses state 243 with an `espresso` marker on the timer entry; speeds 4.85 / 5.3 / 5.8 for 24 h. `window.EspressoMod` = `{ enabled, itemId, pending }` |
-| CoffeeMachines | `CoffeeMachines.js` | Two placeables in blank item slots 1401 / 1402. Each is placed **as the Coffee Maker object** (placement 160) and marked with `SV: Item` (1286) = its item slot, stamped in an alias of `PKD_EPManager.PlaceItemOn`; an alias of `ItemData` swaps in the Keg's `onlyRegions` while a machine is being placed. Five commands are put in front of the Coffee Maker template's action page: if the object is marked, call the mod's appended common event and exit. That event (built from pieces of the game's page) brews with `SV: Smelter Product / Amount / Time` (107, 108, 106) against V133. Sold through a `Game_Shop.storedGoods` alias for every shop named `General Store` (ids 2 and 14, map 8 `T_Store`). Without the mod a placed machine is a Coffee Maker |
+| CoffeeMachines | `CoffeeMachines.js` | **Coffee Machine**: new item in blank slot 1401, placed **as the Coffee Maker object** (placement 160) and marked with `SV: Item` (1286) = its item number, stamped in an alias of `PKD_EPManager.PlaceItemOn`. **Espresso Machine**: the game's own decoration (item 2591, template 317) made to work; any object of that template is adopted (marked) the first time it is used. An alias of `ItemData` swaps in the Keg's `onlyRegions` while a machine is being placed. Five commands are put in front of each template's action page: if the object is a machine, call the mod's appended common event and exit. That event (built from pieces of the game's Coffee Maker page) brews with `SV: Smelter Product / Amount / Time` (107, 108, 106) against V133. Sold through a `Game_Shop.storedGoods` alias for every shop named `General Store` (ids 2 and 14, map 8 `T_Store`). Look: an alias of `Sprite_Character.updateBitmap` gives a placed Espresso Machine that is not on a `placeOverType: table` event a bitmap composed at runtime (Coffee Maker sheet with the Espresso Machine sheet drawn over it; both are 48x128 and the espresso machine covers the coffee machine exactly); the template page's `through` is set to false. Without the mod the objects are the game's own again |
+| StrongerGems | `StrongerGems.js` | Multiplies the `Value` argument of every `WTE_EquipmentUpgradeSystem` Change* command in the gem group events (found through CE 2885), rounds basic stats to whole numbers, leaves a negative basic stat (the Treasure Gem's Max HP loss) alone, and rewrites the numbers in the gem descriptions from the patched commands. Level ranges: in the `Check lv ...` events the constants compared with V1505 are moved out of reach (999999 / -999999) |
 
 Interplay: LessGrind and Espresso both alias `addState` and `realMoveSpeed`. LessGrind leaves speed alone when the
 timer entry has `espresso` set. A coffee never replaces a running espresso.
@@ -334,7 +343,8 @@ the mods from this repository (a second argument points it at another mods folde
 - `test_lessgrind.js` (recipes), `test_lessgrind_events.js` (common event and map patches, prints every changed command),
   `test_lessgrind_coffee.js`, `test_lessgrindhits.js` (prints the swings tables for all three tools),
   `test_higherdrops.js`, `test_cheapkiosk.js`, `test_espresso.js`, `test_coffeemachines.js` (has a small event
-  interpreter with the engine's branch logic, for running a built event list through every player choice). `python dev-tools\list_breakables.py` lists every rock, tree and grass template.
+  interpreter with the engine's branch logic, for running a built event list through every player choice),
+  `test_strongergems.js` (prints every gem before and after). `python dev-tools\list_breakables.py` lists every rock, tree and grass template.
   Pattern: load the real JSON, stub the few engine/plugin functions the mod touches (copy their logic from the plugin),
   run the mod with `new Function(source)()`, then diff against the originals and assert nothing else changed.
 - `python dev-tools\dump_ce.py <ids...>` (run inside the game folder): readable dump of common events with switch and

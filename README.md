@@ -80,7 +80,8 @@ Each mod has its own README with the full details.
 | [`HigherDrops`](mods/HigherDrops/README.md) | Ore rocks, stone and grass drop more: coal about three and a half times as much, copper a bit more, iron as much as coal used to give, stone 1-4, big rocks 15-25, weeds doubled. Dead leaves and bitter herb give 2-4 per pick, bloodberries and mushrooms 1-4 |
 | [`CheapKiosk`](mods/CheapKiosk/README.md) | The Eldritch Slime shopkeeper in the mall sells every item for 1 gold |
 | [`Espresso`](mods/Espresso/README.md) | A new drink from the Coffee Maker with a stronger speed boost than coffee |
-| [`CoffeeMachines`](mods/CoffeeMachines/README.md) | Placeable Coffee Machine and Espresso Machine from the General Store: put in a bean, collect the cup an hour later |
+| [`CoffeeMachines`](mods/CoffeeMachines/README.md) | A placeable Coffee Machine, and the game's Espresso Machine made to work, both from the General Store: put in a bean, collect the cup an hour later |
+| [`StrongerGems`](mods/StrongerGems/README.md) | Upgrade gems add twice as much and work on equipment of any upgrade level |
 
 Every number is in a `CONFIG` block at the top of the mod's `.js` file. Edit it here, then run `elderfield-mods.cmd update`.
 
