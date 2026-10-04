@@ -14,7 +14,7 @@ const fail = m => { problems++; realLog("!! " + m); };
 
 // The agreed table: template name -> [min, max]
 const EXPECT = {
-    "Coal Ore": [6, 14], "Dense Coal": [11, 26],
+    "Coal Ore": [7, 27], "Dense Coal": [14, 54],
     "Copper Ore": [2, 3], "Dense Copper": [4, 7],
     "Iron Ore": [3, 8], "Dense Iron": [6, 14],
     "Gold Ore": [2, 4], "Dense Gold": [4, 8],

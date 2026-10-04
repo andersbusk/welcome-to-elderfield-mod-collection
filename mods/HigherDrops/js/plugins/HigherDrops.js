@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc [HigherDrops] Ore rocks drop more pieces: coal nearly doubled, copper a bit more, iron like coal used to be.
+ * @plugindesc [HigherDrops] Ore rocks and stone drop more pieces: coal about tripled, copper a bit more, iron like coal used to be.
  * @author Anders
  *
  * @help
@@ -35,8 +35,8 @@
     // amount. The unmodded amount is in the comment.
     const DROPS = {
         // --- Coal ---
-        "Coal Ore":                   [6, 14],    // 3-8
-        "Dense Coal":                 [11, 26],   // 6-14
+        "Coal Ore":                   [7, 27],    // 3-8
+        "Dense Coal":                 [14, 54],   // 6-14  (kept at double the plain rock, as in the game)
 
         // --- Copper ---
         "Copper Ore":                 [2, 3],     // 1

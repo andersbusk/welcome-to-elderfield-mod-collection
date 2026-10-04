@@ -9,8 +9,8 @@ This mod gives the other ores a range too, and raises coal.
 
 | Rock | Drops | Unmodded | With HigherDrops |
 |---|---|---|---|
-| Coal Ore | Coal | 3-8 | 6-14 |
-| Dense Coal | Coal | 6-14 | 11-26 |
+| Coal Ore | Coal | 3-8 | 7-27 |
+| Dense Coal | Coal | 6-14 | 14-54 |
 | Copper Ore | Copper Ore | 1 | 2-3 |
 | Dense Copper | Copper Ore | 2-4 | 4-7 |
 | Iron Ore | Iron Ore | 1 | 3-8 |
