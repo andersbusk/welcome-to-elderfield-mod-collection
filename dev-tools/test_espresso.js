@@ -88,9 +88,11 @@ function boot(mods, tweak) {
     };
     const entry = () => Game_Time._actorStates.find(e => e.actorId === 1 && e.stateId === 243);
     const drinkCoffee = () => hero.addState(243);
-    const drinkEspresso = () => { eval($dataCommonEvents[$dataItems[1400].effects[0].dataId].list.find(c => c.code === 355).parameters[0]); hero.addState(243); };
+    // what a drink's event does: mark which drink it is, then add the Coffee state
+    const drink = slot => { eval($dataCommonEvents[$dataItems[slot].effects[0].dataId].list.find(c => c.code === 355).parameters[0]); hero.addState(243); };
+    const drinkEspresso = () => drink(1400), drinkDouble = () => drink(1403), drinkTriple = () => drink(1404);
     const expire = () => { hero._states = []; Game_Time._actorStates = []; };
-    return { hero, player, speeds, entry, drinkCoffee, drinkEspresso, expire };
+    return { hero, player, speeds, entry, drinkCoffee, drinkEspresso, drinkDouble, drinkTriple, expire };
 }
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -111,37 +113,67 @@ if (rec.length !== 1) fail("recipe count " + rec.length);
 else {
     const prod = JSON.parse(JSON.parse(rec[0].Products)[0]), ing = JSON.parse(JSON.parse(rec[0].Ingredients)[0]);
     realLog("   recipe: at", JSON.stringify(rec[0].Profession), "->", prod.Amount + "x item " + prod.Item, "from", ing.Amount + "x generic:" + ing.Generic, "| discovered", rec[0].Discovered);
-    if (prod.Item !== "1400" || ing.Generic !== "CoffeeBean" || ing.Amount !== "6" || rec[0].Profession !== "coffee maker") fail("recipe wrong");
+    if (prod.Item !== "1400" || ing.Generic !== "CoffeeBean" || ing.Amount !== "4" || rec[0].Profession !== "coffee maker") fail("recipe wrong");
 }
 let changedItems = 0;
 for (let i = 1; i < vanillaItems.length; i++) if (JSON.stringify(vanillaItems[i]) !== JSON.stringify(Object.assign({}, $dataItems[i], { meta: undefined }))) changedItems++;
-if (changedItems !== 2) fail("expected exactly 2 items to differ from vanilla (coffee text, espresso slot), got " + changedItems);
+if (changedItems !== 4) fail("expected exactly 4 items to differ from vanilla (coffee text, three espresso slots), got " + changedItems);
+// the two stronger drinks: item, event, recipe at the game's Coffee Maker
+for (const [slot, name, beans, shots] of [[1403, "Double Espresso", "5", 2], [1404, "Triple Espresso", "6", 3]]) {
+    const it = $dataItems[slot], itsEvent = it && it.effects[0] ? $dataCommonEvents[it.effects[0].dataId] : null;
+    const itsRecipe = CGMZ.Crafting.Recipes.map(r => JSON.parse(r)).filter(r => r.Name === name);
+    const p2 = itsRecipe.length === 1 ? JSON.parse(JSON.parse(itsRecipe[0].Products)[0]) : {}, i2 = itsRecipe.length === 1 ? JSON.parse(JSON.parse(itsRecipe[0].Ingredients)[0]) : {};
+    realLog(`   slot ${slot} was ${JSON.stringify(vanillaItems[slot].name)} -> now ${JSON.stringify(it.name)} | price ${it.price} | recipe at ${JSON.stringify((itsRecipe[0] || {}).Profession)}: ${i2.Amount}x generic:${i2.Generic}`);
+    realLog("      " + it.description.replace(/\\c\[\d+\]/g, ""));
+    if (it.name !== name || it.id !== slot || !it.consumable || !itsEvent || itsEvent.id < vanillaEvents.length) fail(name + " item or event not set up");
+    if (!itsEvent.list.some(c => c.code === 355 && c.parameters[0] === "window.EspressoMod.pending = " + shots + ";")) fail(name + " event does not mark its strength");
+    if (itsRecipe.length !== 1 || p2.Item !== String(slot) || i2.Generic !== "CoffeeBean" || i2.Amount !== beans || itsRecipe[0].Profession !== "coffee maker") fail(name + " recipe wrong");
+}
+if ($dataCommonEvents.length !== vanillaEvents.length + 3) fail("expected 3 added common events");
 if ($dataItems.length !== vanillaItems.length) fail("item list length changed");
 
 realLog("   no boost:            ", JSON.stringify(g.speeds()));
 if (!same(g.speeds(), { walk: 4, run: 4.5, bike: 5 })) fail("default speeds wrong");
 g.drinkCoffee();
 realLog("   coffee at hour 100:  ", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
-if (!same(g.speeds(), { walk: 4.5, run: 5, bike: 5.5 }) || g.entry().gameTime.h !== 124 || g.entry().espresso) fail("coffee wrong");
+if (!same(g.speeds(), { walk: 4.5, run: 5, bike: 5.5 }) || g.entry().gameTime.h !== 106 || g.entry().espresso) fail("coffee wrong");
 if (!near(g.speeds(8).walk, 5.0)) fail("coffee diagonal compensation wrong: " + g.speeds(8).walk);
 $gameTime.h = 105;
 g.drinkEspresso();
 realLog("   espresso at hour 105:", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
-if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 }) || g.entry().gameTime.h !== 129 || !g.entry().espresso) fail("espresso wrong");
+if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 }) || g.entry().gameTime.h !== 113 || !g.entry().espresso) fail("espresso wrong");
 if (EspressoMod.pending) fail("pending flag not cleared");
 $gameTime.h = 110;
 g.drinkCoffee();
 realLog("   coffee at hour 110 while espresso runs:", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
-if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 }) || g.entry().gameTime.h !== 129 || !g.entry().espresso) fail("coffee replaced a running espresso");
+if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 }) || g.entry().gameTime.h !== 113 || !g.entry().espresso) fail("coffee replaced a running espresso");
 g.hero._states = []; g.hero._wteIgnoreTimerRefresh = true; g.hero.addState(243); g.hero._wteIgnoreTimerRefresh = false;
-if (g.entry().gameTime.h !== 129 || !g.entry().espresso || !same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 })) fail("full-heal re-apply changed the espresso");
+if (g.entry().gameTime.h !== 113 || !g.entry().espresso || !same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 })) fail("full-heal re-apply changed the espresso");
 g.player._wteIsCutscene = true;
 if (g.player.realMoveSpeed() !== 4) fail("cutscene speed was overridden");
 g.player._wteIsCutscene = false;
 g.expire();
 if (!same(g.speeds(), { walk: 4, run: 4.5, bike: 5 })) fail("speeds not back to default after expiry");
+// the stronger drinks, and which drink wins when one is already running
+$gameTime.h = 300; g.drinkDouble();
+realLog("   double espresso at hour 300:", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
+if (!same(g.speeds(), { walk: 4.85, run: 5.5, bike: 6 }) || g.entry().gameTime.h !== 308) fail("double espresso wrong");
+$gameTime.h = 305; g.drinkEspresso();
+realLog("   espresso at hour 305 while the double runs:", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
+if (!same(g.speeds(), { walk: 4.85, run: 5.5, bike: 6 }) || g.entry().gameTime.h !== 308) fail("a weaker espresso replaced a running double");
+$gameTime.h = 310; g.drinkTriple();
+realLog("   triple espresso at hour 310:", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
+if (!same(g.speeds(), { walk: 4.85, run: 5.7, bike: 6.3 }) || g.entry().gameTime.h !== 318) fail("triple espresso wrong");
+$gameTime.h = 315; g.drinkCoffee(); g.drinkDouble();
+if (!same(g.speeds(), { walk: 4.85, run: 5.7, bike: 6.3 }) || g.entry().gameTime.h !== 318) fail("a coffee or a double replaced a running triple");
+$gameTime.h = 320; g.drinkTriple();
+realLog("   another triple at hour 320: ends hour", g.entry().gameTime.h, "(the same drink starts the hours again)");
+if (g.entry().gameTime.h !== 328) fail("the same drink should start the hours again");
+g.entry().espressoShots = undefined;
+if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 })) fail("a boost saved before the stronger drinks existed should count as a plain espresso");
+g.expire();
 $gameTime.h = 200; g.drinkCoffee();
-if (g.entry().espresso || !same(g.speeds(), { walk: 4.5, run: 5, bike: 5.5 }) || g.entry().gameTime.h !== 224) fail("coffee after an expired espresso wrong");
+if (g.entry().espresso || !same(g.speeds(), { walk: 4.5, run: 5, bike: 5.5 }) || g.entry().gameTime.h !== 206) fail("coffee after an expired espresso wrong");
 realLog("   after expiry -> default speeds; a later coffee is a plain coffee again: ok");
 
 // ============================ B. Espresso alone ============================
@@ -152,15 +184,16 @@ realLog("   coffee:  ", JSON.stringify(g.speeds()), "ends hour", g.entry().gameT
 if (!same(g.speeds(), { walk: 4.4, run: 4.85, bike: 5.16 }) || g.entry().gameTime.h !== 104) fail("vanilla coffee disturbed");
 g.drinkEspresso();
 realLog("   espresso:", JSON.stringify(g.speeds()), "ends hour", g.entry().gameTime.h);
-if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 }) || g.entry().gameTime.h !== 124) fail("espresso alone wrong");
+if (!same(g.speeds(), { walk: 4.85, run: 5.3, bike: 5.8 }) || g.entry().gameTime.h !== 108) fail("espresso alone wrong");
 if ($dataItems[2043].description !== vanillaItems[2043].description) fail("coffee description changed without LessGrind");
 
 // ============================ C. Slot taken by a game update ============================
 realLog("C. Item slot 1400 no longer blank");
 g = boot(["LessGrind", "Espresso"], () => { $dataItems[1400].name = "Some New Item"; });
-if ($dataItems[1400].name !== "Some New Item" || $dataCommonEvents.length !== vanillaEvents.length ||
-    CGMZ.Crafting.Recipes.some(r => JSON.parse(r).Name === "Espresso") || EspressoMod.enabled) fail("mod did not stand down");
-else realLog("   mod stood down: item untouched, no event, no recipe");
+if ($dataItems[1400].name !== "Some New Item" || $dataCommonEvents.length !== vanillaEvents.length + 2 ||
+    CGMZ.Crafting.Recipes.some(r => JSON.parse(r).Name === "Espresso") || EspressoMod.enabled) fail("the Espresso did not stand down");
+else realLog("   Espresso left out: item untouched, no event, no recipe; " + $dataItems[1403].name + " and " + $dataItems[1404].name + " still added");
+if ($dataItems[1403].name !== "Double Espresso" || $dataItems[1404].name !== "Triple Espresso") fail("the other two drinks should still be added");
 g.drinkCoffee();
 if (!same(g.speeds(), { walk: 4.5, run: 5, bike: 5.5 })) fail("LessGrind coffee broken when Espresso is disabled");
 

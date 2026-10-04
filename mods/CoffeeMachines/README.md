@@ -54,4 +54,4 @@ Espresso Machines you placed before the mod work too.
 ## Works with
 
 - `Espresso`: needed for the Espresso Machine.
-- `LessGrind`: the cups are normal Cups of Coffee, so its 24-hour coffee applies.
+- `LessGrind`: the cups are normal Cups of Coffee, so its coffee duration and speeds apply.

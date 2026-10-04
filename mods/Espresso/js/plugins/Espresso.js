@@ -1,32 +1,35 @@
 /*:
  * @target MZ
- * @plugindesc [Espresso] Adds an Espresso drink: a stronger, 24-hour version of the Cup of Coffee speed boost.
+ * @plugindesc [Espresso] Adds Espresso, Double Espresso and Triple Espresso: stronger versions of the Cup of Coffee speed boost that last 8 hours.
  * @author Anders
  *
  * @help
  * ============================================================================
  * Espresso.js
  * ============================================================================
- * Adds one drink, "Espresso", brewed at the Coffee Maker. Drinking it gives
- * the same "Coffee" state as a Cup of Coffee, but marked as espresso strength:
- * faster movement, for ESPRESSO_HOURS in-game hours.
+ * Adds three drinks, brewed at the Coffee Maker: Espresso, Double Espresso and
+ * Triple Espresso. Drinking one gives the same "Coffee" state as a Cup of
+ * Coffee, but marked with its strength: faster movement, for ESPRESSO_HOURS
+ * in-game hours. The stronger the drink, the faster you run and bike.
  *
  * How it is built, and what that means for your save:
- *  - The item does not get a new database ID. It takes over one of the game's
- *    blank "Empty" item slots (ITEM_SLOT), in memory only. If this mod is
- *    removed, any Espresso you still carry turns back into that blank "Empty"
- *    item instead of pointing at something that does not exist.
+ *  - The items do not get new database IDs. Each takes over one of the game's
+ *    blank "Empty" item slots, in memory only. If this mod is removed, a drink
+ *    you still carry turns back into that blank "Empty" item instead of
+ *    pointing at something that does not exist.
  *  - No new state is added. The boost uses the game's own Coffee state; the
- *    only extra data is a small "espresso" marker on the game's timer entry
- *    for that state. Without the mod the marker is ignored and the boost
- *    behaves like a normal coffee.
- *  - The recipe is added in memory. The game's own crafting sync removes
+ *    only extra data is a small marker on the game's timer entry for that
+ *    state. Without the mod the marker is ignored and the boost behaves like
+ *    a normal coffee.
+ *  - The recipes are added in memory. The game's own crafting sync removes
  *    recipes that no longer exist when a save is loaded.
- *  - If a game update ever fills ITEM_SLOT with a real item, this mod notices,
- *    switches itself off and logs a warning rather than overwrite that item.
+ *  - If a game update ever fills one of the slots with a real item, this mod
+ *    notices, leaves that drink out and logs a warning rather than overwrite
+ *    the item.
  *
- * Works with or without the LessGrind mod. A normal coffee never replaces a
- * running espresso; an espresso always replaces a running coffee.
+ * Works with or without the LessGrind mod. A weaker drink never replaces a
+ * stronger one that is still running; an equal or stronger one replaces it
+ * and starts the hours again.
  */
 
 (() => {
@@ -36,24 +39,23 @@
     // ========================================================================
     // CONFIG
     // ========================================================================
-    // Blank "Empty" item slot that becomes the Espresso. Do not change this
-    // once you own Espressos: the save remembers them by this number.
-    const ITEM_SLOT = 1400;
-
-    const ITEM_NAME  = "Espresso";
-    const ITEM_PRICE = 200;      // shop / sell value (Cup of Coffee is 100)
+    // The drinks, weakest first.
+    //   slot:  blank "Empty" item slot the drink takes over. Do not change it
+    //          once you own the drink: the save remembers it by this number.
+    //   beans: Coffee Beans of any quality in the Coffee Maker recipe (a Cup of
+    //          Coffee takes 3). 0 = no recipe.
+    //   price: shop / sell value (Cup of Coffee is 100).
+    //   speed: movement speed while the boost is active, as the game's speed
+    //          value (each +1 doubles your speed; the game caps it at 6.5).
+    //          For reference, no boost: walk 4.0, run on foot 4.5, bike 5.0.
+    const DRINKS = [
+        { slot: 1400, name: "Espresso",        beans: 4, price: 200, speed: { walk: 4.85, run: 5.3, bike: 5.8 } },
+        { slot: 1403, name: "Double Espresso", beans: 5, price: 250, speed: { walk: 4.85, run: 5.5, bike: 6.0 } },
+        { slot: 1404, name: "Triple Espresso", beans: 6, price: 300, speed: { walk: 4.85, run: 5.7, bike: 6.3 } }
+    ];
 
     // In-game hours the boost lasts.
-    const ESPRESSO_HOURS = 24;
-
-    // Movement speed while the espresso boost is active, as the game's speed
-    // value (each +1 doubles your speed; the game caps it at 6.5).
-    // For reference, no boost: walk 4.0, run on foot 4.5, bike 5.0.
-    const SPEED = { walk: 4.85, run: 5.3, bike: 5.8 };
-
-    // Coffee Maker recipe: this many Coffee Beans of any quality (a Cup of
-    // Coffee takes 3). Set to 0 to add no recipe.
-    const RECIPE_BEANS = 6;
+    const ESPRESSO_HOURS = 8;
     // ========================================================================
     // END CONFIG
     // ========================================================================
@@ -63,16 +65,12 @@
     const COFFEE_EVENT = { id: 1132, name: "Coffee Buff" };
     const COFFEE_RECIPE = "Cup of Coffee";
     const SPEED_CAP = 6.5;
+    const STRENGTH = ["strong", "very strong", "huge"];
 
-    const MESSAGE_1 = "The \\c[6]Espresso\\c[0] hits like a truck!";
-    const MESSAGE_2 = "A strong \\c[0]Movement Speed\\c[0] boost for \\c[6]" + ESPRESSO_HOURS + " hours\\c[0].";
-    const DESCRIPTION = "A strong \\c[6]Movement Speed\\c[0] boost for \\c[6]" + ESPRESSO_HOURS +
-        " hours\\c[0]. Stronger than a \\c[6]Cup of Coffee\\c[0].";
-
-    // Set by the Espresso's own event right before it adds the Coffee state,
-    // so the state hook below knows which drink it was.
-    // itemId and enabled let other mods (the Espresso Machine) hand out the drink.
-    const shared = window.EspressoMod = { pending: false, enabled: false, itemId: ITEM_SLOT };
+    // pending: set by a drink's own event right before it adds the Coffee state, so the state
+    // hook below knows which drink it was (1, 2 or 3).
+    // enabled and itemId describe the plain Espresso and let other mods hand it out.
+    const shared = window.EspressoMod = { pending: false, enabled: false, itemId: DRINKS[0].slot };
 
     const clone = (value) => JSON.parse(JSON.stringify(value));
     const safeParse = (text, fallback) => {
@@ -80,6 +78,8 @@
     };
     const isBlankSlot = (item) => !!item && (item.name.trim() === "" || item.name.trim().toLowerCase() === "empty") &&
         (!item.effects || item.effects.length === 0);
+    const boostText = (shots) => "A " + STRENGTH[Math.min(shots, STRENGTH.length) - 1] + " \\c[6]Movement Speed\\c[0] boost for \\c[6]" +
+        ESPRESSO_HOURS + " hours\\c[0].";
 
     // ------------------------------------------------------------------------
     // Database setup: runs once the item and common event files are loaded,
@@ -91,36 +91,36 @@
         return list.find(ev => ev && ev.name === COFFEE_EVENT.name) || null;
     };
 
-    const buildEvent = (coffeeEvent, id) => {
+    const buildEvent = (coffeeEvent, id, drink, shots) => {
         const list = clone(coffeeEvent.list);
         const textLines = list.filter(cmd => cmd.code === 401);
-        if (textLines[0]) textLines[0].parameters[0] = MESSAGE_1;
-        if (textLines[1]) textLines[1].parameters[0] = MESSAGE_2;
-        // Mark the drink as an espresso just before the state is added.
+        if (textLines[0]) textLines[0].parameters[0] = "The \\c[6]" + drink.name + "\\c[0] hits like a truck!";
+        if (textLines[1]) textLines[1].parameters[0] = boostText(shots);
+        // Mark the drink just before the state is added.
         const stateIndex = list.findIndex(cmd => cmd.code === 313 && cmd.parameters[3] === COFFEE_STATE_ID);
         if (stateIndex < 0) return null;
-        list.splice(stateIndex, 0, { code: 355, indent: list[stateIndex].indent, parameters: ["window.EspressoMod.pending = true;"] });
-        return { id: id, list: list, name: "Espresso Buff", switchId: coffeeEvent.switchId, trigger: 0 };
+        list.splice(stateIndex, 0, { code: 355, indent: list[stateIndex].indent, parameters: ["window.EspressoMod.pending = " + shots + ";"] });
+        return { id: id, list: list, name: drink.name + " Buff", switchId: coffeeEvent.switchId, trigger: 0 };
     };
 
-    const addRecipe = () => {
-        if (RECIPE_BEANS <= 0) return "no recipe (RECIPE_BEANS is 0)";
+    const addRecipe = (drink) => {
+        if (!(drink.beans > 0)) return "no recipe";
         if (typeof CGMZ === "undefined" || !CGMZ.Crafting || !Array.isArray(CGMZ.Crafting.Recipes)) return "crafting plugin not found";
         const recipes = CGMZ.Crafting.Recipes;
-        if (recipes.some(r => (safeParse(r, {}) || {}).Name === ITEM_NAME)) return "already present";
+        if (recipes.some(r => (safeParse(r, {}) || {}).Name === drink.name)) return "recipe already present";
         const source = recipes.map(r => safeParse(r, null)).find(r => r && r.Name === COFFEE_RECIPE);
         if (!source) return "Cup of Coffee recipe not found";
         const recipe = clone(source);
-        recipe.Name = ITEM_NAME;
+        recipe.Name = drink.name;
         recipe.Products = JSON.stringify([JSON.stringify({
-            Item: String(ITEM_SLOT), Weapon: "0", Armor: "0", Gold: "false", Generic: "", Amount: "1"
+            Item: String(drink.slot), Weapon: "0", Armor: "0", Gold: "false", Generic: "", Amount: "1"
         })]);
         const beans = (safeParse(source.Ingredients, []) || []).map(entry => safeParse(entry, null)).filter(Boolean);
         if (beans.length !== 1) return "unexpected Cup of Coffee ingredients";
-        beans[0].Amount = String(RECIPE_BEANS);
+        beans[0].Amount = String(drink.beans);
         recipe.Ingredients = JSON.stringify([JSON.stringify(beans[0])]);
         recipes.push(JSON.stringify(recipe));
-        return "added (" + RECIPE_BEANS + " beans)";
+        return drink.beans + " beans";
     };
 
     const trySetup = () => {
@@ -136,33 +136,38 @@
             console.warn(TAG + " Cup of Coffee or its event was not found. Mod disabled.");
             return;
         }
-        if (!isBlankSlot(items[ITEM_SLOT])) {
-            console.warn(TAG + " Item slot " + ITEM_SLOT + " is no longer blank (a game update may have used it). Mod disabled to avoid overwriting it.");
-            return;
-        }
 
-        const event = buildEvent(coffeeEvent, events.length);
-        if (!event) {
-            console.warn(TAG + " Coffee event has an unexpected layout. Mod disabled.");
-            return;
-        }
-        events.push(event);
+        const added = [];
+        DRINKS.forEach((drink, index) => {
+            const shots = index + 1;
+            if (!isBlankSlot(items[drink.slot])) {
+                console.warn(TAG + " Item slot " + drink.slot + " is no longer blank (a game update may have used it). " + drink.name + " left out to avoid overwriting it.");
+                return;
+            }
+            const event = buildEvent(coffeeEvent, events.length, drink, shots);
+            if (!event) {
+                console.warn(TAG + " Coffee event has an unexpected layout. " + drink.name + " left out.");
+                return;
+            }
+            events.push(event);
 
-        const item = clone(coffee);
-        delete item.meta;
-        item.id = ITEM_SLOT;
-        item.name = ITEM_NAME;
-        item.description = DESCRIPTION;
-        item.price = ITEM_PRICE;
-        item.effects = [{ code: 44, dataId: event.id, value1: 1, value2: 0 }];
-        // Keep it out of the encyclopedia so its entry list and completion
-        // count stay exactly as in the unmodded game.
-        if (!/<cgmzencyclopediahide>/i.test(item.note)) item.note += "\n<cgmzencyclopediahide>";
-        if (typeof DataManager !== "undefined" && DataManager.extractMetadata) DataManager.extractMetadata(item);
-        items[ITEM_SLOT] = item;
-
-        shared.enabled = true;
-        console.log(TAG + " Item ready in slot " + ITEM_SLOT + ", event " + event.id + ", recipe: " + addRecipe() + ".");
+            const weaker = index === 0 ? COFFEE_ITEM.name : DRINKS[index - 1].name;
+            const item = clone(coffee);
+            delete item.meta;
+            item.id = drink.slot;
+            item.name = drink.name;
+            item.description = boostText(shots) + " Stronger than " + (/^[AEIOU]/i.test(weaker) ? "an" : "a") + " \\c[6]" + weaker + "\\c[0].";
+            item.price = drink.price;
+            item.effects = [{ code: 44, dataId: event.id, value1: 1, value2: 0 }];
+            // Keep it out of the encyclopedia so its entry list and completion
+            // count stay exactly as in the unmodded game.
+            if (!/<cgmzencyclopediahide>/i.test(item.note)) item.note += "\n<cgmzencyclopediahide>";
+            if (typeof DataManager !== "undefined" && DataManager.extractMetadata) DataManager.extractMetadata(item);
+            items[drink.slot] = item;
+            if (index === 0) shared.enabled = true;
+            added.push(drink.name + " in slot " + drink.slot + " (event " + event.id + ", " + addRecipe(drink) + ")");
+        });
+        console.log(TAG + " " + (added.length ? added.join("; ") : "No drink could be added") + ".");
     };
 
     if (typeof DataManager !== "undefined") {
@@ -182,14 +187,17 @@
     // ------------------------------------------------------------------------
     // Timer entry helpers. The game's time plugin keeps one entry per timed
     // state in Game_Time._actorStates: { actorId, stateId, gameTime }.
+    // This mod adds: espresso (true) and espressoShots (1, 2 or 3).
     // ------------------------------------------------------------------------
     const timersAvailable = () => typeof Game_Time !== "undefined" && Array.isArray(Game_Time._actorStates) &&
         typeof $gameTime !== "undefined" && !!$gameTime;
     const findEntry = (actorId) => Game_Time._actorStates.find(s => s.actorId === actorId && s.stateId === COFFEE_STATE_ID);
+    // An entry from before the stronger drinks existed has no espressoShots: a plain Espresso.
+    const shotsOf = (entry) => Math.min(DRINKS.length, Math.max(1, Math.floor(Number(entry.espressoShots)) || 1));
 
     // ------------------------------------------------------------------------
-    // Drinking: decide whether the Coffee state that was just added is an
-    // espresso, and set its end time.
+    // Drinking: decide which drink the Coffee state that was just added came
+    // from, and set its strength and end time.
     // ------------------------------------------------------------------------
     if (typeof Game_Battler !== "undefined") {
         const _Game_Battler_addState = Game_Battler.prototype.addState;
@@ -202,37 +210,42 @@
                 return;
             }
             const before = findEntry(this.actorId());
-            const runningEspresso = before && before.espresso && this.isStateAffected(COFFEE_STATE_ID) ? before.gameTime : null;
+            const running = before && before.espresso && this.isStateAffected(COFFEE_STATE_ID)
+                ? { shots: shotsOf(before), gameTime: before.gameTime } : null;
 
             _Game_Battler_addState.call(this, stateId);
 
-            const isEspresso = shared.pending;
+            // 0 = a Cup of Coffee; true is what version 1.0 of the event set.
+            const shots = shared.pending === true ? 1 : Math.floor(Number(shared.pending)) || 0;
             shared.pending = false;
             const entry = findEntry(this.actorId());
             if (!entry) return;
-            if (isEspresso) {
+            if (shots > 0 && (!running || shots >= running.shots)) {
                 entry.espresso = true;
+                entry.espressoShots = Math.min(shots, DRINKS.length);
                 entry.gameTime = $gameTime.clone().add("hour", ESPRESSO_HOURS);
-            } else if (runningEspresso) {
-                // A normal coffee on top of an espresso: keep the espresso as it was.
+            } else if (running) {
+                // A weaker drink on top of a stronger one: keep the stronger one as it was.
                 entry.espresso = true;
-                entry.gameTime = runningEspresso;
+                entry.espressoShots = running.shots;
+                entry.gameTime = running.gameTime;
             } else {
                 delete entry.espresso;
+                delete entry.espressoShots;
             }
         };
     }
 
     // ------------------------------------------------------------------------
-    // Speed: while the espresso boost is active, use the SPEED values instead
-    // of what the game's footsteps plugin (WTE_Footsteps) calculated.
+    // Speed: while an espresso boost is active, use that drink's speed values
+    // instead of what the game's footsteps plugin (WTE_Footsteps) calculated.
     // ------------------------------------------------------------------------
-    const espressoActive = () => {
-        if (!timersAvailable() || typeof $gameParty === "undefined" || !$gameParty) return false;
+    const activeDrink = () => {
+        if (!timersAvailable() || typeof $gameParty === "undefined" || !$gameParty) return null;
         const leader = $gameParty.leader();
-        if (!leader || !leader.isStateAffected(COFFEE_STATE_ID)) return false;
+        if (!leader || !leader.isStateAffected(COFFEE_STATE_ID)) return null;
         const entry = findEntry(leader.actorId());
-        return !!(entry && entry.espresso);
+        return entry && entry.espresso ? DRINKS[shotsOf(entry) - 1] : null;
     };
 
     if (typeof Game_Player !== "undefined") {
@@ -242,9 +255,10 @@
             // Cutscenes and the plugin's own "off" switch leave _wteCachedSpeed
             // unset; stay out of the way then.
             if (this._wteIsCutscene || this._wteCachedSpeed === null || this._wteCachedSpeed === undefined) return inner;
-            if (!espressoActive()) return inner;
+            const drink = activeDrink();
+            if (!drink) return inner;
 
-            let speed = this._wteIsBiking ? SPEED.bike : this._wteIsRunning ? SPEED.run : SPEED.walk;
+            let speed = this._wteIsBiking ? drink.speed.bike : this._wteIsRunning ? drink.speed.run : drink.speed.walk;
             speed = Math.min(speed, SPEED_CAP);
             // Same diagonal compensation the footsteps plugin applies to speed states.
             if (this._diagDir && this._diagDir !== 0) {
@@ -255,5 +269,5 @@
         };
     }
 
-    console.log(TAG + " Loaded. Item slot " + ITEM_SLOT + ", " + ESPRESSO_HOURS + "h, speeds " + JSON.stringify(SPEED) + ".");
+    console.log(TAG + " Loaded. " + DRINKS.map(d => d.name + " " + JSON.stringify(d.speed)).join(", ") + ", " + ESPRESSO_HOURS + "h.");
 })();

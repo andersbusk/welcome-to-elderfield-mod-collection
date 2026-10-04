@@ -59,19 +59,19 @@ let problems = 0;
 const fail = m => { problems++; log("!! " + m); };
 const endOf = (actorId, stateId) => { const e = Game_Time._actorStates.find(s => s.actorId === actorId && s.stateId === stateId); return e ? e.gameTime.h : null; };
 
-// 1. Drinking coffee at hour 100 -> ends at hour 124 (vanilla: 104)
+// 1. Drinking coffee at hour 100 -> ends at hour 106 (vanilla: 104)
 const hero = new Game_Battler(1);
 hero.addState(243);
 log("drink at hour 100 -> buff ends at hour", endOf(1, 243), "(vanilla 104)");
-if (endOf(1, 243) !== 124) fail("coffee end time not now + 24h");
+if (endOf(1, 243) !== 106) fail("coffee end time not now + 6h");
 if (!hero._states.includes(243)) fail("state not applied");
 if ($gameTime.h !== 100) fail("the clock itself was modified");
 
-// 2. Drinking again later restarts the 24h from that moment
+// 2. Drinking again later restarts the 6 hours from that moment
 $gameTime.h = 110;
 hero.addState(243);
 log("drink again at hour 110 -> buff ends at hour", endOf(1, 243));
-if (endOf(1, 243) !== 134) fail("re-drinking did not refresh to now + 24h");
+if (endOf(1, 243) !== 116) fail("re-drinking did not refresh to now + 6h");
 if (Game_Time._actorStates.length !== 1) fail("duplicate timer entries");
 
 // 3. The game's re-apply after a full heal must not restart the clock
@@ -79,7 +79,7 @@ $gameTime.h = 120;
 hero._states = [];
 hero._wteIgnoreTimerRefresh = true; hero.addState(243); hero._wteIgnoreTimerRefresh = false;
 log("re-applied after full heal at hour 120 -> still ends at hour", endOf(1, 243));
-if (endOf(1, 243) !== 134) fail("re-apply changed the end time");
+if (endOf(1, 243) !== 116) fail("re-apply changed the end time");
 
 // 4. Other states and non-actors are untouched
 hero.addState(5);
@@ -92,9 +92,9 @@ if (Game_Time._actorStates.length !== 1) fail("non-actor got a timer entry");
 const newText = $dataCommonEvents[1132].list.filter(c => c.code === 401).map(c => c.parameters[0]);
 log("message:    ", JSON.stringify(origText[1]), "->", JSON.stringify(newText[1]));
 log("description:", JSON.stringify(origDesc), "->", JSON.stringify($dataItems[2043].description));
-if (!newText.join(" ").includes("24 hours") || newText.join(" ").match(/[^2]4 hours/)) fail("drink message not updated");
+if (!newText.join(" ").includes("6 hours") || newText.join(" ").match(/\b4 hours/)) fail("drink message not updated");
 if (newText[0] !== origText[0]) fail("first message line changed unexpectedly");
-if ($dataItems[2043].description !== origDesc.replace("4 hours", "24 hours")) fail("item description not updated correctly");
+if ($dataItems[2043].description !== origDesc.replace("4 hours", "6 hours")) fail("item description not updated correctly");
 if (JSON.stringify($dataItems.map(i => i && i.id !== 2043 ? i.description : null)) !== otherDescs) fail("another item's description changed");
 
 log(`problems: ${problems}`);

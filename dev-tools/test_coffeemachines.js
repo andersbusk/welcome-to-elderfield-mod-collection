@@ -282,11 +282,11 @@ if (!CoffeeMachines.enabled) fail("mod did not switch itself on");
 }
 let changed = [];
 for (let i = 1; i < vanilla.items.length; i++) if (!same(vanilla.items[i], Object.assign({}, $dataItems[i], { meta: undefined }))) changed.push(i);
-if (!same(changed, [1400, COFFEE_MACHINE, ESPRESSO_MACHINE]) || $dataItems.length !== vanilla.items.length) fail("items changed: " + changed);
+if (!same(changed, [1400, COFFEE_MACHINE, 1403, 1404, ESPRESSO_MACHINE]) || $dataItems.length !== vanilla.items.length) fail("items changed: " + changed);
 if ($dataItems[1402].name !== "Empty") fail("slot 1402 should stay blank");
 for (let i = 0; i < vanilla.events.length; i++) if (!same(vanilla.events[i], $dataCommonEvents[i])) fail("common event " + i + " was changed");
 realLog("   common events added: " + $dataCommonEvents.slice(vanilla.events.length).map(e => `${e.id} "${e.name}" (${e.list.length} commands)`).join(", "));
-if ($dataCommonEvents.length !== vanilla.events.length + 3) fail("expected 3 added common events (1 Espresso, 2 here)");
+if ($dataCommonEvents.length !== vanilla.events.length + 5) fail("expected 5 added common events (3 Espresso, 2 here)");
 $dataCommonEvents.slice(vanilla.events.length).forEach((e, i) => { if (e.id !== vanilla.events.length + i) fail("added event has the wrong id"); });
 
 let templateChanges = 0;
@@ -512,7 +512,7 @@ if (!lone.bitmap.name) fail("no counter picture without the Espresso mod");
 realLog("\nG. Safety");
 boot(["Espresso", "CoffeeMachines"], () => { $dataItems[COFFEE_MACHINE].name = "Something New"; });
 realLog("   slot 1401 taken by a game update -> enabled: " + CoffeeMachines.enabled + " | " + (state.warnings.find(w => /CoffeeMachines/.test(w)) || ""));
-if (CoffeeMachines.enabled || !same($dataEPEventsMap, vanilla.templates) || $dataCommonEvents.length !== vanilla.events.length + 1 || $dataItems[ESPRESSO_MACHINE].description !== vanilla.items[ESPRESSO_MACHINE].description) fail("mod should have done nothing");
+if (CoffeeMachines.enabled || !same($dataEPEventsMap, vanilla.templates) || $dataCommonEvents.length !== vanilla.events.length + 3 || $dataItems[ESPRESSO_MACHINE].description !== vanilla.items[ESPRESSO_MACHINE].description) fail("mod should have done nothing");
 $gameShop._tempShopId = 13;
 if ($gameShop.storedGoods().some(g => g.id === COFFEE_MACHINE || g.id === ESPRESSO_MACHINE)) fail("disabled mod still sells machines");
 boot(["Espresso", "CoffeeMachines"], () => { $dataSystem.variables[1286] = "SV: Something else"; });
