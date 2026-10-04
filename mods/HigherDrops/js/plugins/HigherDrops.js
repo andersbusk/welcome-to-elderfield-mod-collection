@@ -45,12 +45,10 @@
         // --- Iron ---
         "Iron Ore":                   [3, 8],     // 1
         "Dense Iron":                 [6, 14],    // 2-4
-        "Dense Iron Ore Large":       [1, 2],     // 1   (drops the Dense Iron Ore item)
 
         // --- Gold ---
         "Gold Ore":                   [2, 4],     // 1
         "Dense Gold":                 [4, 8],     // 2-4
-        "Dense Gold Ore Large":       [1, 2],     // 1   (drops the Dense Gold Ore item)
 
         // --- Other ores ---
         "Salt Ore":                   [2, 3],     // 1
@@ -61,8 +59,9 @@
         "Platinum Ore":               [1, 2],     // 1
         "Dense Black Iron Ore Large": [1, 2]      // 1
     };
-    // Left at the game's amounts unless added above: plain stone (Rock, Small
-    // Rock, Big Rock), the magic crystals (Small / Large ... Crystal), gem
+    // Left at the game's amounts unless added above: Dense Iron Ore Large and
+    // Dense Gold Ore Large (1 each), plain stone (Rock, Small Rock, Big Rock),
+    // the magic crystals (Small / Large ... Crystal), gem
     // nodes, Damp Rock, breakable clutter, trees and grass.
     // ========================================================================
     // END CONFIG

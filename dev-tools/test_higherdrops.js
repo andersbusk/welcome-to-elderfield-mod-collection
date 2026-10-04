@@ -16,8 +16,8 @@ const fail = m => { problems++; realLog("!! " + m); };
 const EXPECT = {
     "Coal Ore": [6, 14], "Dense Coal": [11, 26],
     "Copper Ore": [2, 3], "Dense Copper": [4, 7],
-    "Iron Ore": [3, 8], "Dense Iron": [6, 14], "Dense Iron Ore Large": [1, 2],
-    "Gold Ore": [2, 4], "Dense Gold": [4, 8], "Dense Gold Ore Large": [1, 2],
+    "Iron Ore": [3, 8], "Dense Iron": [6, 14],
+    "Gold Ore": [2, 4], "Dense Gold": [4, 8],
     "Salt Ore": [2, 3], "Verdite Ore": [2, 4], "Green Crystal": [2, 5], "Void Crystal Ore": [2, 3],
     "Crimson Ore": [1, 2], "Platinum Ore": [1, 2], "Dense Black Iron Ore Large": [1, 2]
 };
@@ -84,7 +84,7 @@ for (const name of Object.keys(EXPECT)) {
 realLog(`\ncommands changed on the spawn map: ${changedCmds}`);
 
 // ---- things that must stay untouched ----
-const untouched = ["Rock 1", "Small Rock 1", "Big Rock", "Small Moon Crystal", "Large Moon Crystal", "Gem Node t1", "Damp Rock 1", "Clutter1 Crate"];
+const untouched = ["Dense Iron Ore Large", "Dense Gold Ore Large", "Rock 1", "Small Rock 1", "Big Rock", "Small Moon Crystal", "Large Moon Crystal", "Gem Node t1", "Damp Rock 1", "Clutter1 Crate"];
 for (const n of untouched) {
     const i = original.events.findIndex(ev => ev && ev.name === n);
     if (i < 0) { fail(`template "${n}" not found (test needs updating)`); continue; }

@@ -15,10 +15,8 @@ This mod gives the other ores a range too, and raises coal.
 | Dense Copper | Copper Ore | 2-4 | 4-7 |
 | Iron Ore | Iron Ore | 1 | 3-8 |
 | Dense Iron | Iron Ore | 2-4 | 6-14 |
-| Dense Iron Ore Large | Dense Iron Ore | 1 | 1-2 |
 | Gold Ore | Gold Ore | 1 | 2-4 |
 | Dense Gold | Gold Ore | 2-4 | 4-8 |
-| Dense Gold Ore Large | Dense Gold Ore | 1 | 1-2 |
 | Salt Ore | Salt Rock | 1 | 2-3 |
 | Verdite Ore | Verdite Ore | 1 | 2-4 |
 | Green Crystal | Green Crystal | 1-3 | 2-5 |
@@ -30,7 +28,7 @@ This mod gives the other ores a range too, and raises coal.
 The game picks a whole number in the range each time a rock breaks.
 Its own "2x Items!" mining bonus still applies on top.
 
-**Unchanged:** plain stone, the magic crystals (Death, Deep, Dream, Ghost, Light, Moon), gem nodes, Damp Rock, breakable clutter, trees and grass.
+**Unchanged:** the large dense iron and gold rocks (1 Dense Iron Ore or Dense Gold Ore each), plain stone, the magic crystals (Death, Deep, Dream, Ghost, Light, Moon), gem nodes, Damp Rock, breakable clutter, trees and grass.
 
 ## Settings
 

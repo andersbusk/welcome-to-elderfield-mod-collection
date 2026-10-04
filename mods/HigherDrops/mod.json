@@ -1,7 +1,7 @@
 {
   "name": "Higher Drops - more ore per rock",
   "author": "Anders",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Ore rocks drop more pieces. Coal 6-14 (was 3-8), Copper 2-3 (was 1), Iron 3-8 (was 1), Gold 2-4, Salt 2-3, Verdite 2-4, Green Crystal 2-5, Void Crystal 2-3, and the dense versions scale up to match. Stone, magic crystals and gem nodes are unchanged. Edit the DROPS table in js/plugins/HigherDrops.js.",
   "priority": 50
 }
