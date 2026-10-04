@@ -58,7 +58,7 @@ The game folder is found by the manager; `elderfield-mods game` prints it. A typ
   (wrapped in one `if` block), rewrites the file if it differs, and reloads once. The injector is plugin 416 of 418,
   so mod code runs after every game plugin has loaded, and before the database loads.
 - Order: by `mod.json` `priority` ascending, then folder name descending. Current order (2026-10-02):
-  LessGrindHits (50) -> LessGrind (50) -> CheapKiosk (50) -> Espresso (60).
+  LessGrindHits (50) -> LessGrind (50) -> HigherDrops (50) -> CheapKiosk (50) -> Espresso (60).
 - Folder name starting with `!` = disabled. `Example_Mod` must stay disabled: it replaces home map events 73 and 300.
 - Also supports data splicing (`data\moddedItems.json`, `moddedMap002.json`, ...) and image/audio overrides.
   Not used by our mods; splices replace whole entries by ID and go stale on game updates.
@@ -165,6 +165,15 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
   Spawner CEs: 871, 831, 2452, 2370. Full tables: `dev-tools\list_breakables.py` and `test_lessgrindhits.js`.
 - Breakable clutter (`Clutter1 ...` templates: crates, bones, bricks) never sets V944, so the required tier there
   is whatever the last rock left in the variable.
+- Drops: the template page sets V30 `Item` and V31 `Amount` right before calling the swing event, as
+  `[31,31,0,0,n]` (fixed) or `[31,31,0,2,min,max]` (random, re-rolled on every swing; the roll at the breaking
+  swing counts). Coal Ore is 3-8, Dense Coal 6-14, the dense metal rocks 2-4, Green Crystal 1-3, nearly
+  everything else 1. CE 778 `Add Mine Bonus Items` then doubles V31 with a chance of base + mining level
+  (+15 with state 26, +5 with armor 398 equipped), and CE 836 `Give item (Mine)` hands the items over.
+  The swing is refused when V30 x V31 does not fit the inventory. Gem nodes set no item; they call loot
+  events (CE 2865 and friends). Templates are read live from the spawn map (`$dataSpawnMap`, loaded through
+  `DataManager.loadDataFile`, so `onLoad` sees it), which means a patched template also applies to rocks
+  already spawned. Print everything with `dev-tools/list_drops.py`.
 - The profession perk "MiningPerk7 +1 pickaxe damage" is not referenced by any event or plugin (no effect found).
 - **Axe and scythe use the identical mechanism**: CE 906 `Check Axe and Chop Tree`, CE 978 `Check Axe and Chop Wood`,
   CE 984 `Check Scythe and Cut Grass`, each with `SV: A += <tier variable>` then `A >= SV: B`. One map event
@@ -243,6 +252,7 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
 |---|---|---|
 | LessGrind | `LessGrind.js` | Tool upgrades need 1 of each original ingredient (`TOOL_UPGRADE_COST`); Greater Offering of Rain = 1 Wheat; Preserving Barrel = 1 Wood; barrel and keg 1 day, cask 1 day per stage, off-by-one fix; trough upgrade 15 Wood, 15 Stone, 500 gold, +16; coffee 24 h and speeds 4.5 / 5.0 / 5.5 |
 | LessGrindHits | `LessGrindHits.js` | Swings for pickaxe, axe, scythe. Per tool: `maxSwings` (pickaxe 6, axe 4, scythe 2), `upgrade` (`proportional` for pickaxe = damage by tier as vanilla; `halve` for axe and scythe = each tier above the minimum halves the swings), a `toughest` table (health of the toughest thing per minimum tier, which takes maxSwings with that tier; the rest scale by health) and `overrides` by event name (plain `Rock N` = 1, Small Rock 4/2/2/1/1, Big Rock -/-/5/3/2). The user tunes these by reviewing tables; print them with `test_lessgrindhits.js`. Tier gates unchanged. Uses the best axe carried. Exposes `window.LessGrindHits` (`damage`, `swingsFor`, `bestTier`) |
+| HigherDrops | `HigherDrops.js` | Ore rocks drop more: a `DROPS` table of template name -> `[min, max]` replaces the `Amount` line on the rock templates (coal 6-14, copper 2-3, iron 3-8, gold 2-4, dense rocks scaled up, rare ores 1-2). Stone, magic crystals and gem nodes untouched |
 | CheapKiosk | `CheapKiosk.js` | Mall Kiosk (shop 1) sells every tagged item, weapon and armor for 1 gold, A to Z, key items excluded; in-memory catalogue |
 | Espresso | `Espresso.js` | New drink in blank item slot 1400, Coffee Maker recipe (6 beans), reuses state 243 with an `espresso` marker on the timer entry; speeds 4.85 / 5.3 / 5.8 for 24 h |
 
@@ -258,7 +268,7 @@ the mods from this repository (a second argument points it at another mods folde
 - `node dev-tools\simulate_injector.js "<game>"`: builds the injector the way the loader does and syntax-checks it. Shows load order.
 - `test_lessgrind.js` (recipes), `test_lessgrind_events.js` (common event and map patches, prints every changed command),
   `test_lessgrind_coffee.js`, `test_lessgrindhits.js` (prints the swings tables for all three tools),
-  `test_cheapkiosk.js`, `test_espresso.js`. `python dev-tools\list_breakables.py` lists every rock, tree and grass template.
+  `test_higherdrops.js`, `test_cheapkiosk.js`, `test_espresso.js`. `python dev-tools\list_breakables.py` lists every rock, tree and grass template.
   Pattern: load the real JSON, stub the few engine/plugin functions the mod touches (copy their logic from the plugin),
   run the mod with `new Function(source)()`, then diff against the originals and assert nothing else changed.
 - `python dev-tools\dump_ce.py <ids...>` (run inside the game folder): readable dump of common events with switch and
