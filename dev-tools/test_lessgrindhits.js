@@ -29,7 +29,17 @@ global.DataManager = { onLoad() {}, isDatabaseLoaded() { return true; } };
 const vars = {};
 let health = 0, template = null, carried = new Set();
 global.$gameVariables = { value: id => vars[id] || 0, selfValue: key => (key[2] === 25 ? health : 0) };
-global.$gameMap = { mapId: () => 1, event: () => (template ? { event: () => template } : null) };
+// The engine's own walking rule, so the mod's change to it can be checked
+let messageBusy = false, posesOn = 0;
+global.Game_Map = function() {};
+Game_Map.prototype.isEventRunning = function() { return !!this._interpreter._list; };
+global.Game_Player = function() {};
+Game_Player.prototype.canMove = function() { return !$gameMap.isEventRunning() && !messageBusy; };
+global.Galv = { CA: { animStatus: on => { if (on) posesOn++; } } };
+global.$gameMap = Object.assign(new Game_Map(), {
+    mapId: () => 1, event: () => (template ? { event: () => template } : null),
+    _interpreter: { _list: null, _eventId: 0, _childInterpreter: null }
+});
 global.$gameParty = { hasItem: item => !!item && carried.has(item.id) };
 const interp = { getTargetMapIdSelfVariable: () => 1, getTargetEventIdSelfVariable: () => 7, eventId: () => 7 };
 
@@ -49,7 +59,7 @@ for (let i = 0; i < original.length; i++) {
     changed[i] = a.list.filter((c, k) => JSON.stringify(c) !== JSON.stringify(b.list[k])).length;
 }
 realLog("common events changed (id: commands):", JSON.stringify(changed));
-if (JSON.stringify(changed) !== JSON.stringify({ 906: 1, 907: 6, 909: 9, 910: 10, 917: 1, 978: 1, 984: 1 })) fail("unexpected set of patched common events");
+if (JSON.stringify(changed) !== JSON.stringify({ 906: 1, 907: 6, 909: 5, 910: 6, 917: 1, 978: 1, 984: 1 })) fail("unexpected set of patched common events");
 const m156 = JSON.parse(vanillaMap156);
 let mapCmds = 0;
 maps[156].events.forEach((ev, i) => ev && ev.pages.forEach((pg, p) => pg.list.forEach((c, k) => {
@@ -204,7 +214,7 @@ for (const id of [909, 910]) {
         `total ${before.total} -> ${after.total} frames (${(before.total / 60).toFixed(1)}s -> ${(after.total / 60).toFixed(1)}s); ` +
         `steps ${before.steps} -> ${after.steps}; furthest tilt shown ${before.maxTilt} -> ${after.maxTilt} degrees`);
     if (before.total !== 134) fail(`CE ${id}: unmodded fall is ${before.total} frames, expected 134 (game changed?)`);
-    if (after.total !== 25) fail(`CE ${id}: modded fall is ${after.total} frames, expected 25`);
+    if (after.total !== 63) fail(`CE ${id}: modded fall is ${after.total} frames, expected 63`);
     if (after.maxTilt > 90 || after.maxTilt < 80) fail(`CE ${id}: tree ends at ${after.maxTilt} degrees`);
 }
 const right = runFall($dataCommonEvents[910]).sw, left = runFall($dataCommonEvents[909]).sw;
@@ -212,6 +222,45 @@ realLog(`after landing: "Fall right" switch ${runFall(original[910]).sw[622] ? "
 if (right[622] !== false || left[623] !== false) fail("a fall switch is left on after landing");
 if (JSON.stringify(original[921]) !== JSON.stringify($dataCommonEvents[921]) || JSON.stringify(original[908]) !== JSON.stringify($dataCommonEvents[908]) ||
     JSON.stringify(original[902]) !== JSON.stringify($dataCommonEvents[902])) fail("an event outside the two fall events was changed");
+
+// ---- walking while a tree falls ----
+// The map interpreter runs the tree's page, which calls common events as child interpreters.
+realLog("\n=== walking while a tree falls ===");
+{
+    const player = new Game_Player();
+    const root = $gameMap._interpreter;
+    const ce = id => $dataCommonEvents[id].list;
+    const running = (...lists) => {                  // lists[0] is the event page, each next one was called by the previous
+        root._list = lists[0] || null;
+        root._childInterpreter = null;
+        let at = root;
+        for (const l of lists.slice(1)) at = at._childInterpreter = { _list: l, _childInterpreter: null };
+    };
+    const check = (label, want) => {
+        const got = player.canMove();
+        realLog(`  ${label.padEnd(52)} walk: ${got ? "yes" : "no"}`);
+        if (got !== want) fail(`walking: "${label}" should be ${want ? "allowed" : "blocked"}`);
+        if ($gameMap.isEventRunning() !== !!root._list) fail(`walking: "${label}" changed what everything else sees`);
+    };
+    const tree = [{ code: 0 }], npc = [{ code: 0 }];
+    root._eventId = 7;
+    running();                                                check("nothing running", true);
+    running(npc);                                             check("talking to someone", false);
+    running(tree, ce(906), ce(902));                          check("swinging the axe", false);
+    running(tree, ce(906), ce(902), ce(903), ce(908), ce(909)); check("tree tipping over (left)", true);
+    if (posesOn !== 1) fail("walking and running poses were not switched back on when the fall started");
+    messageBusy = true;                                       check("tree tipping over, message on screen", false);
+    messageBusy = false;
+    running(tree, ce(906), ce(902), ce(903), ce(905));        check("tree landed, wood being handed over", true);
+    running(tree, ce(906), ce(902));                          check("last frames of the tree's event", true);
+    running();                                                check("event finished", true);
+    running(tree, ce(906), ce(902));                          check("swinging at the next tree", false);
+    running(tree, ce(906), ce(902), ce(903), ce(908), ce(910)); check("tree tipping over (right)", true);
+    root._eventId = 8;
+    running(npc);                                             check("another event starts straight after", false);
+    running();
+    if (posesOn !== 2) fail("poses switched on " + posesOn + " times, expected once per fall");
+}
 
 // ---- axe tier quirk ----
 const axeCheck = (list) => {                       // run "Check Axe Lv" (only item checks + assignments matter)

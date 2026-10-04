@@ -1,6 +1,6 @@
 # LessGrindHits
 
-Fewer swings with the pickaxe, axe and scythe, and felled trees fall much faster.
+Fewer swings with the pickaxe, axe and scythe. Felled trees fall in half the time and no longer hold you in place.
 
 In the unmodded game every rock, tree and grass tuft has a health value, and a swing does damage equal to your tool's tier
 (Rusty 1, Basic 2, Sturdy 3, Quality 4, Superior 5). The toughest rocks take up to 15 swings.
@@ -57,15 +57,19 @@ needs on any stone it is able to break. Crates, pots, bricks and other breakable
 
 In the game itself nothing needs a scythe better than Basic, so the upper scythe tiers have little to offer with or without this mod.
 
-## Trees fall faster
+## Trees fall faster, and you can walk away
 
-When a tree is felled it tips over a small step at a time, and you cannot move until it has landed.
+When a tree is felled it tips over a small step at a time. In the unmodded game you stand locked in place until it has landed.
 
 | | Unmodded | With LessGrindHits |
 |---|---|---|
-| Tipping over | 119 frames | 25 frames |
+| Tipping over | 119 frames | 63 frames |
 | Waiting for the landing screen shake | 15 frames | 0 (the shake still plays) |
-| Total before you can move | about 2.2 seconds | about 0.4 seconds |
+| Length of the fall | about 2.2 seconds | about 1 second |
+| Walking while it falls | no | yes |
+
+You can walk from the moment the tree starts to tip. Only walking is freed: the next swing, talking and the menu wait
+until the wood is in your bag, as before. A doorway or map exit you step onto during that second may not react until you step onto it again.
 
 The swing itself and the item pickup are unchanged. Logs, stumps and other non-tree wood never had the long fall.
 
@@ -84,7 +88,7 @@ With this mod the best axe you carry counts. (Pickaxe and scythe already work th
 - `toughest`: the health of the toughest thing each tool tier can break. That thing takes `maxSwings` with that tier, and the rest scale by health.
 - `overrides`: exact swing counts for named things, as `[Rusty, Basic, Sturdy, Quality, Superior]`.
 - `FIX_AXE_TIER`: the axe fix above.
-- `TREE_FALL`: `framesPerStep` (frames between tilt steps), `stepMultiplier` (how far each step tilts), `waitForShake`, and `enabled`.
+- `TREE_FALL`: `framesPerStep` (frames between tilt steps, one number for each of the four phases of the fall), `stepMultiplier` (how far each step tilts), `waitForShake`, `moveWhileFalling`, and `enabled`.
 
 ## Your save
 
