@@ -4,8 +4,8 @@ Two placeable machines that turn Coffee Beans into drinks by themselves: put a b
 
 | Machine | Price | Takes | Gives | Time |
 |---|---|---|---|---|
-| Coffee Machine | 500 gold | 1 Coffee Bean | 1 Cup of Coffee | 1 in-game hour |
-| Espresso Machine | 1000 gold | 2 Coffee Beans | 1 Espresso | 1 in-game hour |
+| Coffee Machine | 20 gold | 1 Coffee Bean | 1 Cup of Coffee | 1 in-game hour |
+| Espresso Machine | 30 gold | 2 Coffee Beans | 1 Espresso | 1 in-game hour |
 
 The Espresso Machine only exists when the [`Espresso`](../Espresso/README.md) mod is enabled too.
 

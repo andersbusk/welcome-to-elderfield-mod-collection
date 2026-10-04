@@ -45,8 +45,8 @@
     // minutes: in-game minutes until the cup is ready.
     // price:   price at the General Store.
     const MACHINES = {
-        coffee:   { slot: 1401, name: "Coffee Machine",   drink: "coffee",   beans: 1, minutes: 60, price: 500 },
-        espresso: { slot: 1402, name: "Espresso Machine", drink: "espresso", beans: 2, minutes: 60, price: 1000 }
+        coffee:   { slot: 1401, name: "Coffee Machine",   drink: "coffee",   beans: 1, minutes: 60, price: 20 },
+        espresso: { slot: 1402, name: "Espresso Machine", drink: "espresso", beans: 2, minutes: 60, price: 30 }
     };
 
     // Shops that sell the machines, by the shop's name in the game.

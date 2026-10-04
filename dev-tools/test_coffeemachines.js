@@ -241,7 +241,7 @@ realLog("A. Espresso + CoffeeMachines: what is added");
 boot(["Espresso", "CoffeeMachines"]);
 if (!CoffeeMachines.enabled) fail("mod did not switch itself on");
 const coffeeM = $dataItems[1401], espressoM = $dataItems[1402];
-for (const [slot, name, price] of [[1401, "Coffee Machine", 500], [1402, "Espresso Machine", 1000]]) {
+for (const [slot, name, price] of [[1401, "Coffee Machine", 20], [1402, "Espresso Machine", 30]]) {
     const it = $dataItems[slot];
     realLog(`   slot ${slot}: ${JSON.stringify(vanilla.items[slot].name)} -> ${JSON.stringify(it.name)}, price ${it.price}, icon ${it.iconIndex}, use event ${it.effects[0].dataId}`);
     realLog("      " + it.description.replace(/\\c\[\d+\]/g, "").replace("\n", " / "));
@@ -356,7 +356,7 @@ shopNames.forEach((name, i) => {
     if (mine.length !== want) fail(`shop ${i + 1} "${name}" lists ${mine.length} machines`);
     if (want) {
         realLog(`   shop ${i + 1} "${name}": ` + mine.map(g => `${g.name} ${g.price} gold (stock ${g.amount === "" ? "unlimited" : g.amount})`).join(", "));
-        if (!same(mine.map(g => g.price), [500, 1000]) || goods.length !== $gameShop._coreShops[i]._storedContents.length + 2) fail("shop goods wrong");
+        if (!same(mine.map(g => g.price), [20, 30]) || goods.length !== $gameShop._coreShops[i]._storedContents.length + 2) fail("shop goods wrong");
         if ($gameShop.storedGoods().find(g => g.id === 1401) !== mine[0]) fail("goods are rebuilt on every call");
     }
     if ($gameShop._coreShops[i]._storedContents.some(g => g.id === 1401 || g.id === 1402)) fail("the saved stock of shop " + (i + 1) + " was changed");
