@@ -1,8 +1,9 @@
-"""Lists what every pickaxe / axe / scythe target drops and how many.
+"""Lists what every pickaxe / axe / scythe target and every hand-picked forage spot gives, and how many.
 
 Run inside the game folder:  python <repo>/dev-tools/list_drops.py
 
-A template sets "Item" (variable 30) and "Amount" (variable 31) and then calls the swing event.
+A template sets "Item" (variable 30) and "Amount" (variable 31) and then calls the swing event
+(or, for forage picked by hand, common event 865 "Check and Harvest Item").
 Amounts are either a constant or a random range. Gem nodes pick their item at random.
 """
 import glob
@@ -15,8 +16,8 @@ sys.stdout.reconfigure(encoding="utf-8")
 items = {it["id"]: it["name"] for it in json.load(open("data/Items.json", encoding="utf-8")) if it}
 ce = json.load(open("data/CommonEvents.json", encoding="utf-8"))
 
-SWING = {917: "pickaxe", 906: "axe", 978: "axe", 984: "scythe"}
-REQ = {"pickaxe": 944, "axe": 942, "scythe": 946}
+SWING = {917: "pickaxe", 906: "axe", 978: "axe", 984: "scythe", 865: "by hand"}
+REQ = {"pickaxe": 944, "axe": 942, "scythe": 946, "by hand": None}
 VAR_ITEM, VAR_AMOUNT = 30, 31
 
 
@@ -65,7 +66,7 @@ for f in sorted(glob.glob("data/Map[0-9]*.json")):
             amount = " ; ".join(dict.fromkeys(amount_cmds)) or "(set elsewhere)"
             rows[(tool, req or 0, base, item, amount)].add(mid)
 
-for tool in ("pickaxe", "axe", "scythe"):
+for tool in ("pickaxe", "axe", "scythe", "by hand"):
     print(f"\n=== {tool} ===")
     print(f"  {'target':<26} {'tier':<5} {'drops':<34} {'amount':<16} maps")
     for (t, req, base, item, amount), maps in sorted(rows.items(), key=lambda kv: (kv[0][0], kv[0][1], kv[0][2])):
