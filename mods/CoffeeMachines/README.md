@@ -22,7 +22,7 @@ The General Store sells both, in unlimited number. With `CheapKiosk` enabled the
 - While it brews, the button tells you how many minutes are left. When it is done, the button hands you the cup.
 - The time runs on the game's processing clock, the one the Food Processor uses, so it keeps running while you are somewhere else or asleep.
 - One cup at a time per machine.
-- There is no sign on the machine when a cup is ready; you find out by using it.
+- When the cup is ready, the machine shows the same speech bubble with an exclamation mark as a Keg or a Preserving Barrel that is done.
 
 ## How the Espresso Machine looks
 
@@ -31,7 +31,7 @@ The game draws the Espresso Machine with nothing under it, because it is meant t
 - On a table it looks as in the game.
 - On the floor (or on a rug) it is shown standing on a counter, the same counter the Coffee Maker has, and it blocks the way like one.
 
-The counter picture is put together while the game runs from the game's own two pictures; the mod ships no image.
+The counter picture and the "ready" bubble are put together while the game runs from the game's own pictures; the mod ships no image.
 Espresso Machines you placed before the mod work too.
 
 ## Settings
@@ -42,6 +42,7 @@ Espresso Machines you placed before the mod work too.
 - `SHOP_NAMES`: which shops sell them.
 - `PLACE_LIKE`: the placeable whose placement rules the machines borrow (`"Keg"`). `""` means Home only, as in the unmodded game.
 - `ESPRESSO_ON_COUNTER`: `false` keeps the game's look and lets you walk through an Espresso Machine, as in the unmodded game.
+- `READY_SIGN`: `false` shows no bubble when a cup is ready.
 
 ## Your save
 

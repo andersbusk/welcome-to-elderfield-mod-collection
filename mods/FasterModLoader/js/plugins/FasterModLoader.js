@@ -39,7 +39,7 @@
     // true: frames that take longer than SLOW_FRAME_MS are written to LOG_FILE
     // in the game folder (at most LOG_MAX_LINES lines per game session).
     const LOG_SLOW_FRAMES = true;
-    const SLOW_FRAME_MS = 400;
+    const SLOW_FRAME_MS = 120;
     const LOG_FILE = "mods-slow-frames.log";
     const LOG_MAX_LINES = 200;
     // ========================================================================
@@ -201,6 +201,7 @@
                         new Date().toISOString(),
                         Math.round(took) + " ms",
                         scene + " map " + map,
+                        "scenery baker: " + ((typeof $gameMap !== "undefined" && $gameMap && $gameMap._wteBakeState) || "-"),
                         "map logic " + Math.round(frame.logic) + " ms, sprites " + Math.round(frame.sprites) + " ms",
                         "pictures asked for: " + (stats.pictures - before.pictures) + " (" + Math.round(stats.pictureMs - before.pictureMs) + " ms)",
                         "mod folder checks: " + (stats.indexed - before.indexed) + " from the list, " + (stats.real - before.real) + " on disk",

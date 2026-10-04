@@ -126,7 +126,9 @@ function boot(mods, tweak) {
     };
     // VisuMZ_0_CoreEngine: a drawn-on bitmap is freed together with a sprite that shows it
     global.freeSprite = sprite => { if (sprite.bitmap && sprite.bitmap._customModified) sprite.bitmap.destroy(); };
-    global.ImageManager = { loadCharacter(name) { if (!sheets[name]) { sheets[name] = new Bitmap(48, 128); sheets[name].name = name; sheets[name].smooth = false; } return sheets[name]; } };
+    // the machines' sheets are 3 x 4 cells of 16 x 32, the Keg's 16 x 48
+    global.ImageManager = { loadCharacter(name) { if (!sheets[name]) { sheets[name] = new Bitmap(48, /Keg/.test(name) ? 192 : 128); sheets[name].name = name; sheets[name].smooth = false; } return sheets[name]; } };
+    global.Graphics = { frameCount: 0 };
     global.Sprite_Character = function(character) { this._character = character; this._characterName = undefined; this.bitmap = null; };
     Sprite_Character.prototype.updateBitmap = function() {
         if (this._characterName !== this._character.characterName()) {
@@ -424,13 +426,14 @@ const makerOne = object(MAKER, 1, 1, makerSheet);
 state.mapEvents = [floorOne, tableOne, table, cafe, makerOne, rugOne, rug];
 const sprites = [floorOne, tableOne, cafe, makerOne, rugOne].map(c => new Sprite_Character(c));
 sprites.forEach(s => frames(s, 2));
-const describe = s => (s.bitmap.name ? "the game's picture" : "espresso machine on a counter, drawn from: " + s.bitmap.drawn.map(n => n.split("/").pop()).join(" + "));
+const parts = b => [...new Set(b.drawn)];
+const describe = s => (s.bitmap.name ? "the game's picture" : "espresso machine on a counter, drawn from: " + parts(s.bitmap).map(n => n.split("/").pop()).join(" + "));
 realLog("   alone on its tile:      " + describe(sprites[0]));
 realLog("   on a table:             " + describe(sprites[1]));
 realLog("   on a rug:               " + describe(sprites[4]));
 if (sprites[4].bitmap.name) fail("an Espresso Machine on a rug stands on the floor");
 realLog("   same picture, other map event: " + describe(sprites[2]));
-if (sprites[0].bitmap.name || !same(sprites[0].bitmap.drawn, [makerSheet, espressoSheet]) || sprites[0].bitmap.width !== 48 || sprites[0].bitmap.height !== 128 || sprites[0].bitmap.smooth !== false) fail("floor-standing Espresso Machine should get the counter picture");
+if (sprites[0].bitmap.name || !same(parts(sprites[0].bitmap), [makerSheet, espressoSheet]) || sprites[0].bitmap.width !== 48 || sprites[0].bitmap.height !== 128 || sprites[0].bitmap.smooth !== false) fail("floor-standing Espresso Machine should get the counter picture");
 if (sprites[1].bitmap.name !== espressoSheet || sprites[2].bitmap.name !== espressoSheet || sprites[3].bitmap.name !== makerSheet) fail("only a floor-standing placed Espresso Machine may change its picture");
 state.mapEvents.push({ x: 3, y: 3, type: "table" });                 // a table is put under the first one
 frames(sprites[0], 25);
@@ -452,6 +455,42 @@ shared._baseTexture = null; shared._canvas = null;                    // freed a
 back.forEach(s => frames(s, 1));
 realLog("   after the picture is freed by force: " + (back.every(s => fine(s.bitmap)) && back[0].bitmap !== shared ? "drawn again" : "BROKEN"));
 if (!back.every(s => fine(s.bitmap)) || back[0].bitmap === shared || back[0].bitmap !== back[1].bitmap) fail("a freed counter picture should be drawn again");
+
+// ---- the "ready" bubble ----
+realLog("\n   The \"ready\" bubble (taken from the Keg's \"done\" picture)");
+const kegSheet = vanilla.templates.events.find(e => e && e.name === "Keg").pages[4].image.characterName;
+const machine = (template, x, id, sheet) => ({ x, y: 1, _mapId: HOME, eventId: () => id, event: () => $dataEPEventsMap.events[template], characterName: () => sheet });
+const setState = (id, marker, count, finish) => {
+    if (marker) state.self[[HOME, id, 1286]] = marker;
+    if (count) { state.self[[HOME, id, 108]] = count; state.self[[HOME, id, 106]] = finish; } else { delete state.self[[HOME, id, 108]]; delete state.self[[HOME, id, 106]]; }
+};
+state.map = HOME; state.vars[133] = 5000;
+const m = { coffee: machine(MAKER, 11, 801, makerSheet), maker: machine(MAKER, 12, 802, makerSheet), floor: machine(ESPRESSO, 13, 803, espressoSheet), table: machine(ESPRESSO, 14, 804, espressoSheet) };
+setState(801, COFFEE_MACHINE, 1, 5060); setState(803, ESPRESSO_MACHINE, 1, 5060); setState(804, ESPRESSO_MACHINE, 1, 5060);
+setState(802, 0, 1, 1);                                              // an ordinary Coffee Maker with stray numbers on it
+state.mapEvents = [m.coffee, m.maker, m.floor, m.table, { x: 14, y: 1, type: "table" }];
+const sp = {}; for (const k of Object.keys(m)) { sp[k] = new Sprite_Character(m[k]); frames(sp[k], 2); }
+const what = s => (s.bitmap.name ? "the game's picture" : parts(s.bitmap).map(n => n.split("/").pop()).join(" + ") + " (" + s.bitmap.width + "x" + s.bitmap.height + ")");
+const report = title => realLog("   " + title.padEnd(26) + Object.keys(sp).map(k => k + ": " + what(sp[k])).join(" | "));
+report("while brewing:");
+if (sp.coffee.bitmap.name !== makerSheet || sp.maker.bitmap.name !== makerSheet || sp.table.bitmap.name !== espressoSheet || !same(parts(sp.floor.bitmap), [makerSheet, espressoSheet])) fail("no bubble while brewing");
+state.vars[133] = 5060;
+for (const k of Object.keys(sp)) frames(sp[k], 20);
+report("when the cup is ready:");
+if (!same(parts(sp.coffee.bitmap), [makerSheet, kegSheet]) || !same(parts(sp.floor.bitmap), [makerSheet, espressoSheet, kegSheet]) || !same(parts(sp.table.bitmap), [espressoSheet, kegSheet])) fail("ready machines should show the bubble");
+if ([sp.coffee, sp.floor, sp.table].some(s => s.bitmap.width !== 48 || s.bitmap.height !== 192)) fail("a picture with the bubble should be 16 rows taller per cell");
+if (sp.maker.bitmap.name !== makerSheet) fail("an ordinary Coffee Maker must never show the bubble");
+const still = sp.coffee.bitmap;
+Graphics.frameCount += 15; frames(sp.coffee, 1);
+const bobs = sp.coffee.bitmap !== still && !sp.coffee.bitmap.name;
+Graphics.frameCount += 45; frames(sp.coffee, 1);
+realLog("   the bubble bobs: " + (bobs && sp.coffee.bitmap === still ? "yes, and comes back to where it started" : "NO"));
+if (!bobs || sp.coffee.bitmap !== still) fail("the bubble should move and return");
+setState(801, 0, 0); setState(803, 0, 0); setState(804, 0, 0);       // cups collected
+for (const k of Object.keys(sp)) frames(sp[k], 20);
+report("after collecting:");
+if (sp.coffee.bitmap.name !== makerSheet || sp.table.bitmap.name !== espressoSheet || !same(parts(sp.floor.bitmap), [makerSheet, espressoSheet]) || sp.floor.bitmap.height !== 128) fail("the bubble should go away after collecting");
+if (ImageManager.loadCharacter(kegSheet).drawn.length || ImageManager.loadCharacter(makerSheet).drawn.length) fail("a game sprite sheet was drawn on");
 
 // ============================ F. without the Espresso mod ============================
 realLog("\nF. CoffeeMachines without the Espresso mod");

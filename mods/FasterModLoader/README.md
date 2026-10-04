@@ -20,7 +20,7 @@ A mod that does replace a picture or a sound keeps working as before. Files you 
 
 ## The slow frame log
 
-Whenever a frame takes longer than 0.4 seconds, one line is written to `mods-slow-frames.log` in the game folder: how long it took, how much of that was map logic and how much was drawing, how many pictures were requested, the slowest single event command, and which events were running.
+Whenever a frame takes longer than 0.12 seconds (below about 8 frames per second), one line is written to `mods-slow-frames.log` in the game folder: how long it took, how much of that was map logic and how much was drawing, how many pictures were requested, the slowest single event command, and which events were running.
 
 It is there to find out what causes a freeze. It costs nothing noticeable, and it stops after 200 lines per game session.
 

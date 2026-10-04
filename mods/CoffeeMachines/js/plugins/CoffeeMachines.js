@@ -66,6 +66,10 @@
     // shown on a counter like the Coffee Maker's, and it blocks the way like
     // one. On a table it looks as in the game.
     const ESPRESSO_ON_COUNTER = true;
+
+    // true: a machine whose cup is ready shows the same speech bubble with an
+    // exclamation mark that the Keg and the Preserving Barrel show.
+    const READY_SIGN = true;
     // ========================================================================
     // END CONFIG
     // ========================================================================
@@ -98,7 +102,10 @@
     const byItem = {};                              // item number -> machine, filled once the database is ready
     const byMarker = {};                            // marker on a placed object -> machine (byItem plus old markers)
     const placementRules = {};                      // placement number -> { wide, source, copy }
-    const look = { template: null, sheet: "", counterSheet: "" };   // the Espresso Machine's template and the two sprite sheets
+    // What the sprites are made of: the Espresso Machine's template and sheet, the Coffee Maker's
+    // sheet, and the sheet and row the "ready" bubble is taken from.
+    const look = { template: null, sheet: "", makerSheet: "", signSheet: "", signRow: 0 };
+    const READY_SIGN_FROM = "Keg";               // the placeable whose "done" picture has the bubble
 
     const clone = (value) => JSON.parse(JSON.stringify(value));
     const safeParse = (text, fallback) => {
@@ -427,11 +434,20 @@
             espressoItem.description = describe(whereLine, espressoMachine);
             byItem[espressoMachine.item] = byMarker[espressoMachine.item] = espressoMachine;
             byMarker[LEGACY_ESPRESSO_SLOT] = espressoMachine;
+            look.sheet = espressoPlace.actionPage.image.characterName;
             if (ESPRESSO_ON_COUNTER) {
                 espressoPlace.actionPage.through = false;          // the game lets you walk through it
                 look.template = espressoPlace.template;
-                look.sheet = espressoPlace.actionPage.image.characterName;
-                look.counterSheet = makerPlace.actionPage.image.characterName;
+            }
+        }
+        look.makerSheet = makerPlace.actionPage.image.characterName;
+        if (READY_SIGN) {
+            // The last page of a machine's template is its "done" page; its picture has the bubble.
+            const signTemplate = templates.events.find(ev => ev && ev.name === READY_SIGN_FROM);
+            const signPage = signTemplate ? signTemplate.pages[signTemplate.pages.length - 1] : null;
+            if (signPage && signPage.image && signPage.image.characterName && signPage.stepAnime) {
+                look.signSheet = signPage.image.characterName;
+                look.signRow = (signPage.image.direction - 2) / 2;
             }
         }
         api.enabled = true;
@@ -515,39 +531,72 @@
     }
 
     // ------------------------------------------------------------------------
-    // The Espresso Machine on a counter. The picture is put together while the game
-    // runs, from the game's own two sprite sheets: the Coffee Maker on its counter with
-    // the Espresso Machine drawn over it (it covers the coffee machine completely).
-    // Only the sprite on screen is changed, never the object, so nothing of this is saved.
+    // How the machines look. Only the sprite on screen is changed, never the object, so nothing
+    // of this is saved. The pictures are put together while the game runs, from the game's own
+    // sprite sheets:
+    //  - the Espresso Machine on a counter: the Coffee Maker on its counter with the Espresso
+    //    Machine drawn over it (it covers the coffee machine completely);
+    //  - the "ready" sign: the speech bubble the Keg shows when it is done, drawn above the machine.
     // ------------------------------------------------------------------------
     //
-    // One picture is shared by every Espresso Machine. The game frees a picture that was drawn
-    // while it runs together with the first sprite that showed it: on leaving the map, on
-    // picking a machine up, at the end of a placement. So the picture is marked as not to be
+    // A picture is shared by every machine that looks the same. The game frees a picture that was
+    // drawn while it runs together with the first sprite that showed it: on leaving the map, on
+    // picking a machine up, at the end of a placement. So each picture is marked as not to be
     // freed, and it is drawn again if it was freed anyway.
-    let counterBitmap = null, counterRequested = false, counterFailed = false;
     const isUsable = (bitmap) => !!bitmap && !!bitmap._canvas && !!bitmap._baseTexture && !bitmap._baseTexture.destroyed;
-    const counterPicture = () => {
-        if (counterBitmap && !isUsable(counterBitmap)) counterBitmap = null;
-        if (!counterBitmap && !counterRequested && !counterFailed) {
-            counterRequested = true;
-            const base = ImageManager.loadCharacter(look.counterSheet), top = ImageManager.loadCharacter(look.sheet);
-            base.addLoadListener(() => top.addLoadListener(() => {
-                counterRequested = false;
-                if (!base.width || base.width !== top.width || base.height !== top.height) {
-                    counterFailed = true;                   // not the layout we know: keep the game's look
+    const whenLoaded = (bitmaps, then) => {
+        let left = bitmaps.length;
+        for (const bitmap of bitmaps) bitmap.addLoadListener(() => { if (--left === 0) then(); });
+    };
+    // layers: the sheets drawn, bottom first. top: rows between the top of the 32-pixel cell and
+    // the top of the machine, which is where the bubble goes.
+    const LOOKS = {
+        coffee:  { layers: () => [look.makerSheet], top: 3 },
+        bare:    { layers: () => [look.sheet], top: 2 },
+        counter: { layers: () => [look.makerSheet, look.sheet], top: 2 }
+    };
+    const BUBBLE = { pattern: 2, top: 12, height: 11 };      // where the bubble sits in the Keg's "done" cell (16 x 48)
+    const SIGN_ROOM = 16;                                     // rows added above the machine for the bubble
+    const SIGN_FRAMES = [0, 1, 2, 1];                         // the bubble bobs up and down like the Keg's
+    const pictures = {};
+    // frame: -1 = no sign, 0..2 = the sign, that many rows higher
+    const picture = (name, frame) => {
+        const key = name + ":" + frame;
+        const entry = pictures[key] || (pictures[key] = { bitmap: null, requested: false, failed: false });
+        if (entry.bitmap && !isUsable(entry.bitmap)) entry.bitmap = null;
+        if (!entry.bitmap && !entry.requested && !entry.failed) {
+            entry.requested = true;
+            const layers = LOOKS[name].layers().map(sheet => ImageManager.loadCharacter(sheet));
+            const bubble = frame >= 0 ? ImageManager.loadCharacter(look.signSheet) : null;
+            whenLoaded(bubble ? layers.concat(bubble) : layers, () => {
+                entry.requested = false;
+                const base = layers[0];
+                const cw = base.width / 3, ch = base.height / 4;              // a sheet is 3 x 4 cells
+                const bw = bubble ? bubble.width / 3 : cw, bh = bubble ? bubble.height / 4 : 0;
+                if (!base.width || !Number.isInteger(cw) || !Number.isInteger(ch) || bw !== cw ||
+                    layers.some(b => b.width !== base.width || b.height !== base.height) ||
+                    (bubble && bh < BUBBLE.top + BUBBLE.height)) {
+                    entry.failed = true;                                       // not the layout we know: keep the game's look
                     return;
                 }
-                const bitmap = new Bitmap(base.width, base.height);
-                bitmap.smooth = top.smooth;
-                bitmap.blt(base, 0, 0, base.width, base.height, 0, 0);
-                bitmap.blt(top, 0, 0, top.width, top.height, 0, 0);
+                const room = bubble ? SIGN_ROOM : 0;
+                const bitmap = new Bitmap(base.width, (ch + room) * 4);
+                bitmap.smooth = base.smooth;
+                for (let row = 0; row < 4; row++) {
+                    const y = row * (ch + room) + room;
+                    for (const layer of layers) bitmap.blt(layer, 0, row * ch, base.width, ch, 0, y);
+                    if (!bubble) continue;
+                    for (let col = 0; col < 3; col++) {
+                        bitmap.blt(bubble, BUBBLE.pattern * cw, look.signRow * bh + BUBBLE.top, cw, BUBBLE.height,
+                            col * cw, y + LOOKS[name].top - BUBBLE.height - frame);
+                    }
+                }
                 bitmap._wteIndestructible = true;           // the game's own mark for a shared picture (WTE_SpriteBaker)
                 bitmap._customModified = false;             // the core engine's mark for "free with its sprite" (VisuMZ_0_CoreEngine)
-                counterBitmap = bitmap;
-            }));
+                entry.bitmap = bitmap;
+            });
         }
-        return counterBitmap;
+        return entry.bitmap;
     };
     // The game tags what can carry other objects: tables are "table", rugs and floors are "lower".
     const isTable = (event) => {
@@ -561,22 +610,38 @@
     // A placed Espresso Machine that does not stand on a table.
     api.standsOnFloor = (character) => !!look.template && !!character && typeof character.event === "function" &&
         character.event() === look.template && !$gameMap.eventsXy(character.x, character.y).some(other => other !== character && isTable(other));
+    // A machine whose cup is ready to be collected.
+    api.isReady = (character) => {
+        if (!api.enabled || !character || typeof character.eventId !== "function") return false;
+        const mapId = character._mapId, eventId = character.eventId();
+        if (!byMarker[$gameVariables.selfValue([mapId, eventId, VARS.machine])]) return false;
+        return $gameVariables.selfValue([mapId, eventId, VARS.count]) > 0 && clock() >= $gameVariables.selfValue([mapId, eventId, VARS.finish]);
+    };
 
     if (typeof Sprite_Character !== "undefined" && typeof ImageManager !== "undefined" && typeof Bitmap !== "undefined") {
         const _Sprite_Character_updateBitmap = Sprite_Character.prototype.updateBitmap;
         Sprite_Character.prototype.updateBitmap = function() {
             _Sprite_Character_updateBitmap.apply(this, arguments);
-            if (!look.sheet || this._characterName !== look.sheet) return;
-            // Looking at the tile every frame is not needed; a few times a second is plenty.
+            const name = this._characterName;
+            const isEspresso = !!look.sheet && name === look.sheet;
+            if (!isEspresso && !(look.makerSheet && name === look.makerSheet)) return;
+            // Looking at the tile and the machine every frame is not needed; a few times a second is plenty.
             this._cmTick = (this._cmTick || 0) + 1;
-            if (this._cmOnFloor === undefined || this._cmTick % 20 === 0) this._cmOnFloor = api.standsOnFloor(this._character);
-            const counter = this._cmOnFloor ? counterPicture() : null;
-            if (counter) {
-                if (this.bitmap !== counter) this.bitmap = counter;
-                this._cmShowsCounter = true;
-            } else if (this._cmShowsCounter) {
-                this._cmShowsCounter = false;
-                this.bitmap = ImageManager.loadCharacter(this._characterName);
+            if (this._cmOnFloor === undefined || this._cmTick % 20 === 0) {
+                this._cmOnFloor = isEspresso && api.standsOnFloor(this._character);
+                this._cmReady = !!look.signSheet && api.isReady(this._character);
+            }
+            const lookName = isEspresso ? (this._cmOnFloor ? "counter" : "bare") : "coffee";
+            const ticks = typeof Graphics !== "undefined" ? Graphics.frameCount || 0 : 0;
+            const frame = this._cmReady ? SIGN_FRAMES[Math.floor(ticks / 15) % SIGN_FRAMES.length] : -1;
+            // Until a picture with the sign is drawn, show the one without it rather than flicker.
+            const wanted = (frame >= 0 ? picture(lookName, frame) : null) || (lookName === "counter" ? picture(lookName, -1) : null);
+            if (wanted) {
+                if (this.bitmap !== wanted) this.bitmap = wanted;
+                this._cmCustom = true;
+            } else if (this._cmCustom) {
+                this._cmCustom = false;
+                this.bitmap = ImageManager.loadCharacter(name);
             }
         };
     }
