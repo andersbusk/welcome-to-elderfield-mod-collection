@@ -79,7 +79,7 @@ Each mod has its own README with the full details.
 | [`LessGrindHits`](mods/LessGrindHits/README.md) | Fewer swings for pickaxe, axe and scythe. Stone breaks in one hit, nothing takes more than 6. Felled trees fall in about 1 second instead of 2.2, and you can walk while they fall |
 | [`HigherDrops`](mods/HigherDrops/README.md) | Ore rocks, stone and grass drop more: coal about three and a half times as much, copper a bit more, iron as much as coal used to give, stone 1-4, big rocks 15-25, weeds doubled. Dead leaves and bitter herb give 2-4 per pick, bloodberries and mushrooms 1-4 |
 | [`CheapKiosk`](mods/CheapKiosk/README.md) | The Eldritch Slime shopkeeper in the mall sells every item for 1 gold |
-| [`Espresso`](mods/Espresso/README.md) | A new drink from the Coffee Maker with a stronger speed boost than coffee |
+| [`Espresso`](mods/Espresso/README.md) | Espresso, Double Espresso and Triple Espresso from the Coffee Maker: stronger speed boosts than coffee |
 | [`CoffeeMachines`](mods/CoffeeMachines/README.md) | A placeable Coffee Machine, and the game's Espresso Machine made to work, both from the General Store: put in a bean, collect the cup an hour later |
 | [`StrongerGems`](mods/StrongerGems/README.md) | Upgrade gems add three times as much and work on equipment of any upgrade level |
 | [`FasterModLoader`](mods/FasterModLoader/README.md) | Removes the disk check the mod loader does in every mod folder for each picture and sound; logs frames that freeze |
