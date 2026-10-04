@@ -58,12 +58,17 @@ The game folder is found by the manager; `elderfield-mods game` prints it. A typ
   (wrapped in one `if` block), rewrites the file if it differs, and reloads once. The injector is plugin 416 of 418,
   so mod code runs after every game plugin has loaded, and before the database loads.
 - Order: by `mod.json` `priority` ascending, then folder name descending. Current order (2026-10-02):
-  StrongerGems (50) -> LessGrindHits (50) -> LessGrind (50) -> HigherDrops (50) -> CheapKiosk (50) -> Espresso (60)
-  -> CoffeeMachines (70).
+  FasterModLoader (10) -> StrongerGems (50) -> LessGrindHits (50) -> LessGrind (50) -> HigherDrops (50) ->
+  CheapKiosk (50) -> Espresso (60) -> CoffeeMachines (70).
 - Folder name starting with `!` = disabled. `Example_Mod` must stay disabled: it replaces home map events 73 and 300.
 - Also supports data splicing (`data\moddedItems.json`, `moddedMap002.json`, ...) and image/audio overrides.
   Not used by our mods; splices replace whole entries by ID and go stale on game updates.
-- Cost: with the loader on, every image/audio request does one `fs.existsSync` per mod folder.
+- Cost: with the loader on, every `ImageManager.loadBitmap` and `AudioManager.createBuffer` call does one
+  `fs.existsSync` per mod folder (about 30 microseconds each; 0.2 ms per picture with seven mods). The loader's hook
+  sits at the bottom of the alias chain and its mod list is a closure constant, so the only handle on it is `fs`
+  itself. Callers that request pictures in bulk make this visible: `WTE_SpriteBaker` calls `ImageManager.loadCharacter`
+  for every baked event, every frame, while a bake is loading. The `FasterModLoader` mod answers those checks from
+  an index built at start-up.
 
 ## 4. Patterns that worked
 
@@ -338,6 +343,7 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
 | Espresso | `Espresso.js` | New drink in blank item slot 1400, Coffee Maker recipe (6 beans), reuses state 243 with an `espresso` marker on the timer entry; speeds 4.85 / 5.3 / 5.8 for 24 h. `window.EspressoMod` = `{ enabled, itemId, pending }` |
 | CoffeeMachines | `CoffeeMachines.js` | **Coffee Machine**: new item in blank slot 1401, placed **as the Coffee Maker object** (placement 160) and marked with `SV: Item` (1286) = its item number, stamped in an alias of `PKD_EPManager.PlaceItemOn`. **Espresso Machine**: the game's own decoration (item 2591, template 317) made to work; any object of that template is adopted (marked) the first time it is used. An alias of `ItemData` swaps in the Keg's `onlyRegions` while a machine is being placed. Five commands are put in front of each template's action page: if the object is a machine, call the mod's appended common event and exit. That event (built from pieces of the game's Coffee Maker page) brews with `SV: Smelter Product / Amount / Time` (107, 108, 106) against V133. Sold through a `Game_Shop.storedGoods` alias for every shop named `General Store` (ids 2 and 14, map 8 `T_Store`). Look: an alias of `Sprite_Character.updateBitmap` gives a placed Espresso Machine that is not on a `placeOverType: table` event a bitmap composed at runtime (Coffee Maker sheet with the Espresso Machine sheet drawn over it; both are 48x128 and the espresso machine covers the coffee machine exactly); the template page's `through` is set to false. Without the mod the objects are the game's own again |
 | StrongerGems | `StrongerGems.js` | Multiplies the `Value` argument of every `WTE_EquipmentUpgradeSystem` Change* command in the gem group events (found through CE 2885), rounds basic stats to whole numbers, leaves a negative basic stat (the Treasure Gem's Max HP loss) alone, and rewrites the numbers in the gem descriptions from the patched commands. Level ranges: in the `Check lv ...` events the constants compared with V1505 are moved out of reach (999999 / -999999) |
+| FasterModLoader | `FasterModLoader.js` | Wraps `fs.existsSync`: questions about `mods/<enabled mod>/img|audio/...` are answered from a Set built at start-up, everything else goes to disk. Slow frame log (`mods-slow-frames.log` in the game folder): aliases `SceneManager.updateMain`, `Game_Map.update`, `Spriteset_Map.update`, `ImageManager.loadBitmap` and `Game_Interpreter.executeCommand` to record frame time, the logic / sprite split, picture requests, the slowest event command and the running event chain. **This is the way to see what the game does during a freeze**, since an agent cannot see the console |
 
 Interplay: LessGrind and Espresso both alias `addState` and `realMoveSpeed`. LessGrind leaves speed alone when the
 timer entry has `espresso` set. A coffee never replaces a running espresso.
@@ -353,7 +359,8 @@ the mods from this repository (a second argument points it at another mods folde
   `test_lessgrind_coffee.js`, `test_lessgrindhits.js` (prints the swings tables for all three tools),
   `test_higherdrops.js`, `test_cheapkiosk.js`, `test_espresso.js`, `test_coffeemachines.js` (has a small event
   interpreter with the engine's branch logic, for running a built event list through every player choice),
-  `test_strongergems.js` (prints every gem before and after). `python dev-tools\list_breakables.py` lists every rock, tree and grass template.
+  `test_strongergems.js` (prints every gem before and after), `test_fastermodloader.js` (builds a fake game folder
+  in the temp directory). `python dev-tools\list_breakables.py` lists every rock, tree and grass template.
   Pattern: load the real JSON, stub the few engine/plugin functions the mod touches (copy their logic from the plugin),
   run the mod with `new Function(source)()`, then diff against the originals and assert nothing else changed.
 - `python dev-tools\dump_ce.py <ids...>` (run inside the game folder): readable dump of common events with switch and
