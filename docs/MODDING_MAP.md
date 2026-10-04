@@ -58,7 +58,7 @@ The game folder is found by the manager; `elderfield-mods game` prints it. A typ
   (wrapped in one `if` block), rewrites the file if it differs, and reloads once. The injector is plugin 416 of 418,
   so mod code runs after every game plugin has loaded, and before the database loads.
 - Order: by `mod.json` `priority` ascending, then folder name descending. Current order (2026-10-02):
-  LessGrindHits (50) -> LessGrind (50) -> HigherDrops (50) -> CheapKiosk (50) -> Espresso (60).
+  LessGrindHits (50) -> LessGrind (50) -> HigherDrops (50) -> CheapKiosk (50) -> Espresso (60) -> CoffeeMachines (70).
 - Folder name starting with `!` = disabled. `Example_Mod` must stay disabled: it replaces home map events 73 and 300.
 - Also supports data splicing (`data\moddedItems.json`, `moddedMap002.json`, ...) and image/audio overrides.
   Not used by our mods; splices replace whole entries by ID and go stale on game updates.
@@ -83,7 +83,8 @@ Rules of thumb:
 - Change a command's parameters in place; do not insert or delete commands in existing lists (indices and jumps).
   If logic must change, switch an operand to a script (code 122 operand type 4, or code 111 type 12).
 - Match commands by exact parameter shape so a game update makes the patch a no-op instead of a wrong edit.
-- Adding content without new IDs: reuse a blank `"Empty"` item slot (1296 exist; 1400 is taken by Espresso),
+- Adding content without new IDs: reuse a blank `"Empty"` item slot (1296 exist; 1400 is taken by Espresso,
+  1401 and 1402 by CoffeeMachines),
   append common events at `$dataCommonEvents.length` (ID computed at load, never saved), reuse existing states.
   A new item/state ID that disappears with the mod is what can crash a save.
 
@@ -212,6 +213,37 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
 - Cask: CE 2474 sets `SV: Processing Time` (V1288) = 7 days per stage; the stage logic is a script on the cask
   template event (map 53 `EVENT PLACEABLES`, event 126, page 8). Four stages.
 - Placeable machines are `PKD_PocketEvents` templates on map 53 (barrel 106, keg 107, cask 126).
+- Clock machines (grinder, furnace, food processor, ...): CE 819 `Processor Checks` takes the items, CE 820
+  `Process Item` sets `SV: Smelter Time` (V106) = minutes + V133 `Processing Clock` (in-game minutes, only counts
+  up, also over a night's sleep) and the stage variable to 1. The template's parallel page runs CE 821
+  `Processing Process`: `this.waitForVar(133, this.getSv(106))` (WTE_TimeConverter), then stage 2, whose action
+  page calls CE 824 `Give Processed Item`. So "ready" is simply `V133 >= SV 106`.
+
+### Placeables (PKD_PocketEvents)
+- Templates: map 53, loaded as `$dataEPEventsMap` (through `loadDataFile`, so `DataManager.onLoad` sees it; it is
+  not part of `isDatabaseLoaded`). 457 templates and 457 entries in plugin param `PlacementsList`, entry N = template
+  event N. Parsed into `PKD_EasyPlacement.PARAMS.ITEMS` (index 0 is null) when the database starts loading. All
+  readers go through `PKD_EPManager.ItemData(index)`, which makes it the one place to alter rules per situation.
+- An item places an object through its use event: `PKD_PocketEvents PlacePocketEvent {placementItemId, gameItemId}`
+  -> `PKD_EPManager.Start` -> the player picks a spot -> `PKD_EPManager.PlaceItemOn(x, y)`, which registers
+  `[placement index, x, y, event id, ...]` in `$gameSystem` (saved), consumes `$gameTemp._epPlacementPartyItemId` and
+  turns self switch D on. On every map load `CreateEPEventsOnMap` rebuilds the objects from that list with
+  `ItemData(index).eventId`: **an index that no longer exists throws**, so a mod must never leave its own placement
+  index in a save. `WTE_GalvConverter` can also turn placed objects into Galv spawn events (`_spawnEventId` =
+  10000 + template), copying self switches and self variables to the new event id; keep per-object state in self
+  variables, not in a table keyed by event id.
+- Template pages follow one pattern: page 0 parallel -> CE 2397 `Object Placement Start` (CE 1299 resets every `SV:`
+  variable and self switch); page 1 parallel, self switch D: sets `SV: A` (V24) and D off; page 2 action, `SV: A`
+  condition: the object's menu (`EliMZ_ChoiceManager cmd_setupByTemplate {id}` + Show Choices; templates live in
+  `Eli.ChoiceManager.parameters.templates`, pictures per choice). Pick-up is `RemovePocketEvent2` + CE 1299 + CE 837
+  `Give item (Farm)` with V30/V31, or CE 966 `Deco Pickup` for plain decorations. Machines add a parallel
+  "processing" page and a "ready" action page with `<AlwaysStep>`.
+- Where an object may go: `onlyRegions` of its placement entry, plus `WTE_PocketEvents_MapWhitelist`, which maps the
+  sorted region list to allowed maps (Coffee Maker `5,8,9,10,11,12,238` = Home only; Keg
+  `3,4,5,8,9,10,11,12,13,14,15,238` = Home 2, Farm 34, Workshop 42, Ranch 50). It caches its answer per map and
+  placement id in `PKD_EPManager._wteCachedMapValidity`.
+- `python dev-tools/find_var.py <id>` shows every reader and writer of a variable; use it before borrowing an `SV:`
+  variable. `SV: Item` (1286) is only used by fishing spots, the crab pot and the cask.
 
 ### Time
 - `DK_Game_Time` + `WTE_TimeConverter`. V127 Hour, V125 Month, V250 Day Counter (+1 in CE 507 `Midnight`).
@@ -234,7 +266,7 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
 
 ### Shops (DM_CoreShop)
 - Shops are defined in plugin param `Shop Manager` (1-based IDs; ID 1 = `Mall Kiosk`, the Eldritch Slime shopkeeper,
-  map 3 `Mall_1` event 30). Opened by plugin command `DM_CoreShop openCoreShop {shopId}`.
+  map 3 `Mall_1` event 30; `General Store` is ID 14 in the full game and ID 2 in the demo, map 8 `T_Store`). Opened by plugin command `DM_CoreShop openCoreShop {shopId}`.
 - `$gameShop._coreShops[id-1]._storedContents` / `_storedDataContents` hold stock and are saved. Goods are shallow copies
   of database entries with `amount` ('' = unlimited), `price`, `retained`, `infinite`, `unlockStatus`, `categories`.
 - The buy window reads `$gameShop.storedGoods()`; buying gives `$dataItems[good.id]`. Override `storedGoods` for a
@@ -271,7 +303,8 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
 | LessGrindHits | `LessGrindHits.js` | Swings for pickaxe, axe, scythe. Per tool: `maxSwings` (pickaxe 6, axe 4, scythe 2), `upgrade` (`proportional` for pickaxe = damage by tier as vanilla; `halve` for axe and scythe = each tier above the minimum halves the swings), a `toughest` table (health of the toughest thing per minimum tier, which takes maxSwings with that tier; the rest scale by health) and `overrides` by event name (plain `Rock N` = 1, Small Rock 4/2/2/1/1, Big Rock -/-/5/3/2). The user tunes these by reviewing tables; print them with `test_lessgrindhits.js`. Tier gates unchanged. Uses the best axe carried. `TREE_FALL` shortens the felling animation (waits per phase [2, 1, 1, 1] instead of [3, 3, 2, 2], no wait for the shake: 134 -> 63 frames), turns switch 622 off at the end of the right-hand fall, and lets the player walk from the start of the fall until the tree's event ends: `Game_Player.canMove` is aliased and, only inside that call, `Game_Map.isEventRunning` answers false; `Galv.CA.animStatus(true)` is called when the fall starts. Exposes `window.LessGrindHits` (`damage`, `swingsFor`, `bestTier`) |
 | HigherDrops | `HigherDrops.js` | Ore rocks and forage give more: a `DROPS` table of template name -> `[min, max]` replaces the `Amount` line on the rock templates (coal 7-31, copper 2-3, iron 3-8, gold 2-4, dense rocks scaled up, rare ores 1-2, plain `Rock` 1-4, `Big Rock` 15-25, weeds from `Grass` 2-6 and `Big Grass` 8-16; forage through CE 865: `Leaf Pile` and `Herb` 2-4, `Bloodberry` and the twelve mushroom templates 1-4; any pickaxe, axe, scythe or hand-picked template can be listed). Never below the game's own amount for a template. Magic crystals and gem nodes untouched |
 | CheapKiosk | `CheapKiosk.js` | Mall Kiosk (shop 1) sells every tagged item, weapon and armor for 1 gold, A to Z, key items excluded; in-memory catalogue |
-| Espresso | `Espresso.js` | New drink in blank item slot 1400, Coffee Maker recipe (6 beans), reuses state 243 with an `espresso` marker on the timer entry; speeds 4.85 / 5.3 / 5.8 for 24 h |
+| Espresso | `Espresso.js` | New drink in blank item slot 1400, Coffee Maker recipe (6 beans), reuses state 243 with an `espresso` marker on the timer entry; speeds 4.85 / 5.3 / 5.8 for 24 h. `window.EspressoMod` = `{ enabled, itemId, pending }` |
+| CoffeeMachines | `CoffeeMachines.js` | Two placeables in blank item slots 1401 / 1402. Each is placed **as the Coffee Maker object** (placement 160) and marked with `SV: Item` (1286) = its item slot, stamped in an alias of `PKD_EPManager.PlaceItemOn`; an alias of `ItemData` swaps in the Keg's `onlyRegions` while a machine is being placed. Five commands are put in front of the Coffee Maker template's action page: if the object is marked, call the mod's appended common event and exit. That event (built from pieces of the game's page) brews with `SV: Smelter Product / Amount / Time` (107, 108, 106) against V133. Sold through a `Game_Shop.storedGoods` alias for every shop named `General Store` (ids 2 and 14, map 8 `T_Store`). Without the mod a placed machine is a Coffee Maker |
 
 Interplay: LessGrind and Espresso both alias `addState` and `realMoveSpeed`. LessGrind leaves speed alone when the
 timer entry has `espresso` set. A coffee never replaces a running espresso.
@@ -285,7 +318,8 @@ the mods from this repository (a second argument points it at another mods folde
 - `node dev-tools\simulate_injector.js "<game>"`: builds the injector the way the loader does and syntax-checks it. Shows load order.
 - `test_lessgrind.js` (recipes), `test_lessgrind_events.js` (common event and map patches, prints every changed command),
   `test_lessgrind_coffee.js`, `test_lessgrindhits.js` (prints the swings tables for all three tools),
-  `test_higherdrops.js`, `test_cheapkiosk.js`, `test_espresso.js`. `python dev-tools\list_breakables.py` lists every rock, tree and grass template.
+  `test_higherdrops.js`, `test_cheapkiosk.js`, `test_espresso.js`, `test_coffeemachines.js` (has a small event
+  interpreter with the engine's branch logic, for running a built event list through every player choice). `python dev-tools\list_breakables.py` lists every rock, tree and grass template.
   Pattern: load the real JSON, stub the few engine/plugin functions the mod touches (copy their logic from the plugin),
   run the mod with `new Function(source)()`, then diff against the originals and assert nothing else changed.
 - `python dev-tools\dump_ce.py <ids...>` (run inside the game folder): readable dump of common events with switch and

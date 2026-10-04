@@ -1,7 +1,7 @@
 {
   "name": "Espresso - a stronger coffee",
   "author": "Anders",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Adds an Espresso drink, brewed at the Coffee Maker from 6 Coffee Beans. It gives a stronger movement speed boost than a Cup of Coffee (walk 4.85, run 5.3, bike 5.8) for 24 hours. The item reuses a blank item slot and the game's own Coffee state, so removing the mod leaves nothing broken behind. Edit the CONFIG block in js/plugins/Espresso.js.",
   "priority": 60
 }

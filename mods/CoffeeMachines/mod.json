@@ -1,0 +1,7 @@
+{
+  "name": "Coffee Machines - put in a bean, collect a cup",
+  "author": "Anders",
+  "version": "1.0.0",
+  "description": "Two placeable machines sold at the General Store. Coffee Machine (500 gold): 1 Coffee Bean becomes a Cup of Coffee one in-game hour later. Espresso Machine (1000 gold, needs the Espresso mod): 2 Coffee Beans become an Espresso. They can be placed in the Home, on the Farm, in the Workshop and on the Ranch. A placed machine is saved as the game's own Coffee Maker with a marker, so removing the mod leaves nothing broken behind. Edit the CONFIG block in js/plugins/CoffeeMachines.js.",
+  "priority": 70
+}
