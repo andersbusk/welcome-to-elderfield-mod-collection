@@ -48,10 +48,15 @@
     //   speed: movement speed while the boost is active, as the game's speed
     //          value (each +1 doubles your speed; the game caps it at 6.5).
     //          For reference, no boost: walk 4.0, run on foot 4.5, bike 5.0.
+    //   says:  how the message ends when you drink it ("The Espresso ...").
+    //          The game's own Cup of Coffee says "The Coffee perks you up!".
     const DRINKS = [
-        { slot: 1400, name: "Espresso",        beans: 4, price: 200, speed: { walk: 4.85, run: 5.3, bike: 5.8 } },
-        { slot: 1403, name: "Double Espresso", beans: 5, price: 250, speed: { walk: 4.85, run: 5.5, bike: 6.0 } },
-        { slot: 1404, name: "Triple Espresso", beans: 6, price: 300, speed: { walk: 4.85, run: 5.7, bike: 6.3 } }
+        { slot: 1400, name: "Espresso",        beans: 4, price: 200, speed: { walk: 4.85, run: 5.0, bike: 5.3 },
+          says: "hits like a truck!" },
+        { slot: 1403, name: "Double Espresso", beans: 5, price: 250, speed: { walk: 4.85, run: 5.1, bike: 5.4 },
+          says: "hits like a freight train!" },
+        { slot: 1404, name: "Triple Espresso", beans: 6, price: 300, speed: { walk: 4.85, run: 5.2, bike: 5.5 },
+          says: "hits like a meteor. You can hear colors!" }
     ];
 
     // In-game hours the boost lasts.
@@ -94,7 +99,7 @@
     const buildEvent = (coffeeEvent, id, drink, shots) => {
         const list = clone(coffeeEvent.list);
         const textLines = list.filter(cmd => cmd.code === 401);
-        if (textLines[0]) textLines[0].parameters[0] = "The \\c[6]" + drink.name + "\\c[0] hits like a truck!";
+        if (textLines[0]) textLines[0].parameters[0] = "The \\c[6]" + drink.name + "\\c[0] " + (drink.says || "hits like a truck!");
         if (textLines[1]) textLines[1].parameters[0] = boostText(shots);
         // Mark the drink just before the state is added.
         const stateIndex = list.findIndex(cmd => cmd.code === 313 && cmd.parameters[3] === COFFEE_STATE_ID);
