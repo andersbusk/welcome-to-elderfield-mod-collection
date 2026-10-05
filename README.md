@@ -80,7 +80,6 @@ Each mod has its own README with the full details.
 | [`HigherDrops`](mods/HigherDrops/README.md) | Ore rocks, stone and grass drop more: coal about three and a half times as much, copper a bit more, iron as much as coal used to give, stone 1-4, big rocks 15-25, weeds doubled. Dead leaves and bitter herb give 2-4 per pick, bloodberries and mushrooms 1-4 |
 | [`CheapKiosk`](mods/CheapKiosk/README.md) | The Eldritch Slime shopkeeper in the mall sells every item for 1 gold |
 | [`Espresso`](mods/Espresso/README.md) | Espresso, Double Espresso and Triple Espresso from the Coffee Maker: stronger speed boosts than coffee |
-| [`CoffeeMachines`](mods/CoffeeMachines/README.md) | A placeable Coffee Machine, and the game's Espresso Machine made to work, both from the General Store: put in a bean, collect the cup an hour later |
 | [`StrongerGems`](mods/StrongerGems/README.md) | Upgrade gems add three times as much and work on equipment of any upgrade level |
 | [`FasterModLoader`](mods/FasterModLoader/README.md) | Removes the disk check the mod loader does in every mod folder for each picture and sound; logs frames that freeze |
 

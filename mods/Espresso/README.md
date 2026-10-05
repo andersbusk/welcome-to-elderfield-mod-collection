@@ -10,10 +10,10 @@ All three are brewed at the game's Coffee Maker from Coffee Beans of any quality
 |---|---|---|---|---|
 | No boost | | 4.0 | 4.5 | 5.0 |
 | Cup of Coffee, unmodded | 3 | 4.4 | 4.85 | 5.16 |
-| Cup of Coffee with the LessGrind mod | 3 | 4.5 | 5.0 | 5.5 |
-| Espresso | 4 | 4.85 | 5.0 | 5.3 |
-| Double Espresso | 5 | 4.85 | 5.1 | 5.4 |
-| Triple Espresso | 6 | 4.85 | 5.2 | 5.5 |
+| Cup of Coffee with the LessGrind mod | 3 | 4.45 | 4.9 | 5.2 |
+| Espresso | 4 | 4.55 | 5.0 | 5.3 |
+| Double Espresso | 5 | 4.6 | 5.1 | 5.4 |
+| Triple Espresso | 6 | 4.65 | 5.2 | 5.5 |
 
 Speed is the game's own scale, where +1 doubles your speed. The game caps it at 6.5.
 
@@ -22,8 +22,7 @@ Speed is the game's own scale, where +1 doubles your speed. The game caps it at 
 - The buff icon and tooltip still say "Coffee" for all of them.
 - Each drink announces itself a little harder: the Coffee "perks you up", the Espresso "hits like a truck", the Double "like a freight train", the Triple "like a meteor".
 
-Works with or without the `LessGrind` mod. Note that LessGrind's own Cup of Coffee is faster on the bike (5.5) than the Espresso and the Double Espresso, and as fast as the Triple;
-the espressos' advantage over it is on foot.
+Works with or without the `LessGrind` mod.
 
 ## Settings
 
@@ -41,5 +40,3 @@ The mod adds new items, so it is built to leave nothing broken behind:
 - **Safe against game updates.** If an update ever uses one of the item slots for a real item, the mod notices,
   leaves that drink out, and leaves the new item alone.
 - **Hidden from the encyclopedia**, so its completion count stays as in the unmodded game.
-
-The [`CoffeeMachines`](../CoffeeMachines/README.md) mod, if you use it, makes the game's Espresso Machine brew an Espresso from 2 Coffee Beans.

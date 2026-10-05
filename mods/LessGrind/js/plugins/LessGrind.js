@@ -140,7 +140,7 @@
     //   no boost:        walk 4.0,  run on foot 4.5,  bike 5.0
     //   vanilla coffee:  walk 4.4,  run on foot 4.85, bike 5.16
     // Set to null to keep the vanilla coffee speeds.
-    const COFFEE_SPEED = { walk: 4.5, run: 5.0, bike: 5.5 };
+    const COFFEE_SPEED = { walk: 4.45, run: 4.9, bike: 5.2 };
 
     // --- Equipment ---
     // Replaces the stats of a piece of equipment. The eight numbers are, in order:

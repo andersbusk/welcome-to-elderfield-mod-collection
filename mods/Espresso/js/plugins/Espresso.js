@@ -51,11 +51,11 @@
     //   says:  how the message ends when you drink it ("The Espresso ...").
     //          The game's own Cup of Coffee says "The Coffee perks you up!".
     const DRINKS = [
-        { slot: 1400, name: "Espresso",        beans: 4, price: 200, speed: { walk: 4.85, run: 5.0, bike: 5.3 },
+        { slot: 1400, name: "Espresso",        beans: 4, price: 200, speed: { walk: 4.55, run: 5.0, bike: 5.3 },
           says: "hits like a truck!" },
-        { slot: 1403, name: "Double Espresso", beans: 5, price: 250, speed: { walk: 4.85, run: 5.1, bike: 5.4 },
+        { slot: 1403, name: "Double Espresso", beans: 5, price: 250, speed: { walk: 4.6,  run: 5.1, bike: 5.4 },
           says: "hits like a freight train!" },
-        { slot: 1404, name: "Triple Espresso", beans: 6, price: 300, speed: { walk: 4.85, run: 5.2, bike: 5.5 },
+        { slot: 1404, name: "Triple Espresso", beans: 6, price: 300, speed: { walk: 4.65, run: 5.2, bike: 5.5 },
           says: "hits like a meteor. You can hear colors!" }
     ];
 

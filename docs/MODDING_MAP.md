@@ -59,7 +59,7 @@ The game folder is found by the manager; `elderfield-mods game` prints it. A typ
   so mod code runs after every game plugin has loaded, and before the database loads.
 - Order: by `mod.json` `priority` ascending, then folder name descending. Current order (2026-10-02):
   FasterModLoader (10) -> StrongerGems (50) -> LessGrindHits (50) -> LessGrind (50) -> HigherDrops (50) ->
-  CheapKiosk (50) -> Espresso (60) -> CoffeeMachines (70).
+  CheapKiosk (50) -> Espresso (60).
 - Folder name starting with `!` = disabled. `Example_Mod` must stay disabled: it replaces home map events 73 and 300.
 - Also supports data splicing (`data\moddedItems.json`, `moddedMap002.json`, ...) and image/audio overrides.
   Not used by our mods; splices replace whole entries by ID and go stale on game updates.
@@ -90,7 +90,7 @@ Rules of thumb:
   If logic must change, switch an operand to a script (code 122 operand type 4, or code 111 type 12).
 - Match commands by exact parameter shape so a game update makes the patch a no-op instead of a wrong edit.
 - Adding content without new IDs: reuse a blank `"Empty"` item slot (1296 exist; 1400, 1403 and 1404 are taken by Espresso,
-  1401 by CoffeeMachines; 1402 was used by its version 1.0),
+  1401 and 1402 were used by the removed CoffeeMachines mod and may still sit in a save, so leave those two alone),
   append common events at `$dataCommonEvents.length` (ID computed at load, never saved), reuse existing states.
   A new item/state ID that disappears with the mod is what can crash a save.
 
@@ -262,6 +262,17 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
   (leaving the map, removing an event). A bitmap shared by several sprites must set `_customModified = false` and
   `_wteIndestructible = true` (WTE_SpriteBaker makes `Bitmap.destroy` skip those), and should still check
   `_canvas` / `_baseTexture` before reuse and redraw itself when they are gone.
+- **A worked example is in the git history.** The CoffeeMachines mod (removed 2026-10-05 because the Coffee Maker
+  with the Espresso recipes covered its use) added a working placeable without leaving anything of its own in a
+  save: it placed its machine as the game's Coffee Maker object and marked it with `SV: Item` (1286) in an alias of
+  `PKD_EPManager.PlaceItemOn`; an alias of `ItemData` widened `onlyRegions` while one was being placed; five commands
+  in front of the template's action page called an appended common event for marked objects and exited; it brewed
+  against V133 with `SV: Smelter Product / Amount / Time`; it sold its items through a `Game_Shop.storedGoods`
+  alias; and an alias of `Sprite_Character.updateBitmap` swapped in bitmaps composed at runtime (a counter under
+  the game's Espresso Machine, the Keg's "done" bubble). Read it with
+  `git show 344d0c9:mods/CoffeeMachines/js/plugins/CoffeeMachines.js`; its test,
+  `git show 344d0c9:dev-tools/test_coffeemachines.js`, has a small event interpreter with the engine's branch
+  logic for running a built event list through every player choice.
 - `python dev-tools/find_var.py <id>` shows every reader and writer of a variable; use it before borrowing an `SV:`
   variable. `SV: Item` (1286) is only used by fishing spots, the crab pot and the cask.
 
@@ -338,12 +349,11 @@ From script: `$gameVariables.selfValue([mapId, eventId, varId])`, `setSelfValue(
 
 | Mod | File | What it does |
 |---|---|---|
-| LessGrind | `LessGrind.js` | Tool upgrades need 1 of each original ingredient (`TOOL_UPGRADE_COST`); Greater Offering of Rain = 1 Wheat; Preserving Barrel = 1 Wood; barrel and keg 1 day, cask 1 day per stage, off-by-one fix; trough upgrade 15 Wood, 15 Stone, 500 gold, +16; coffee 6 h and speeds 4.5 / 5.0 / 5.5; `EQUIPMENT_STATS` replaces the `params` of listed weapons / armor when the file loads (Lucky Horseshoe, armor 412: +10 all, +30 Luck) |
+| LessGrind | `LessGrind.js` | Tool upgrades need 1 of each original ingredient (`TOOL_UPGRADE_COST`); Greater Offering of Rain = 1 Wheat; Preserving Barrel = 1 Wood; barrel and keg 1 day, cask 1 day per stage, off-by-one fix; trough upgrade 15 Wood, 15 Stone, 500 gold, +16; coffee 6 h and speeds 4.45 / 4.9 / 5.2; `EQUIPMENT_STATS` replaces the `params` of listed weapons / armor when the file loads (Lucky Horseshoe, armor 412: +10 all, +30 Luck) |
 | LessGrindHits | `LessGrindHits.js` | Swings for pickaxe, axe, scythe. Per tool: `maxSwings` (pickaxe 6, axe 4, scythe 2), `upgrade` (`proportional` for pickaxe = damage by tier as vanilla; `halve` for axe and scythe = each tier above the minimum halves the swings), a `toughest` table (health of the toughest thing per minimum tier, which takes maxSwings with that tier; the rest scale by health) and `overrides` by event name (plain `Rock N` = 1, Small Rock 4/2/2/1/1, Big Rock -/-/5/3/2). The user tunes these by reviewing tables; print them with `test_lessgrindhits.js`. Tier gates unchanged. Uses the best axe carried. `TREE_FALL` shortens the felling animation (waits per phase [2, 1, 1, 1] instead of [3, 3, 2, 2], no wait for the shake: 134 -> 63 frames), turns switch 622 off at the end of the right-hand fall, and lets the player walk from the start of the fall until the tree's event ends: `Game_Player.canMove` is aliased and, only inside that call, `Game_Map.isEventRunning` answers false; `Galv.CA.animStatus(true)` is called when the fall starts. Exposes `window.LessGrindHits` (`damage`, `swingsFor`, `bestTier`) |
 | HigherDrops | `HigherDrops.js` | Ore rocks and forage give more: a `DROPS` table of template name -> `[min, max]` replaces the `Amount` line on the rock templates (coal 7-31, copper 2-3, iron 3-8, gold 2-4, dense rocks scaled up, rare ores 1-2, plain `Rock` 1-4, `Big Rock` 15-25, weeds from `Grass` 2-6 and `Big Grass` 8-16; forage through CE 865: `Leaf Pile` and `Herb` 2-4, `Bloodberry` and the twelve mushroom templates 1-4; any pickaxe, axe, scythe or hand-picked template can be listed). Never below the game's own amount for a template. Magic crystals and gem nodes untouched |
 | CheapKiosk | `CheapKiosk.js` | Mall Kiosk (shop 1) sells every tagged item, weapon and armor for 1 gold, A to Z, key items excluded; in-memory catalogue |
-| Espresso | `Espresso.js` | Three drinks in blank item slots 1400 / 1403 / 1404 (Espresso, Double, Triple), Coffee Maker recipes of 4 / 5 / 6 beans cloned from the Cup of Coffee recipe, each with its own appended common event. All reuse state 243; the timer entry gets `espresso: true` and `espressoShots` (1-3). Speeds walk 4.85, run 5.0 / 5.1 / 5.2, bike 5.3 / 5.4 / 5.5 for 8 h (`ESPRESSO_HOURS`). A weaker drink never replaces a running stronger one. `window.EspressoMod` = `{ enabled, itemId, pending }` (`pending` = the shots of the drink being drunk) |
-| CoffeeMachines | `CoffeeMachines.js` | **Coffee Machine**: new item in blank slot 1401, placed **as the Coffee Maker object** (placement 160) and marked with `SV: Item` (1286) = its item number, stamped in an alias of `PKD_EPManager.PlaceItemOn`. **Espresso Machine**: the game's own decoration (item 2591, template 317) made to work; any object of that template is adopted (marked) the first time it is used. An alias of `ItemData` swaps in the Keg's `onlyRegions` while a machine is being placed. Five commands are put in front of each template's action page: if the object is a machine, call the mod's appended common event and exit. That event (built from pieces of the game's Coffee Maker page) brews with `SV: Smelter Product / Amount / Time` (107, 108, 106) against V133. Sold through a `Game_Shop.storedGoods` alias for every shop named `General Store` (ids 2 and 14, map 8 `T_Store`). Look: an alias of `Sprite_Character.updateBitmap` gives a placed Espresso Machine that is not on a `placeOverType: table` event a bitmap composed at runtime (Coffee Maker sheet with the Espresso Machine sheet drawn over it; both are 48x128 and the espresso machine covers the coffee machine exactly); the template page's `through` is set to false. The same alias shows a "ready" bubble when `V133 >= SV 106`: the bubble is copied from the Keg's done row (`!$Keg`, 16x48 cells, row for direction 6, pattern 2, rows 12-22) into a sheet with 16 extra rows per cell, in three heights that are swapped every 15 frames. Without the mod the objects are the game's own again |
+| Espresso | `Espresso.js` | Three drinks in blank item slots 1400 / 1403 / 1404 (Espresso, Double, Triple), Coffee Maker recipes of 4 / 5 / 6 beans cloned from the Cup of Coffee recipe, each with its own appended common event. All reuse state 243; the timer entry gets `espresso: true` and `espressoShots` (1-3). Speeds walk 4.55 / 4.6 / 4.65, run 5.0 / 5.1 / 5.2, bike 5.3 / 5.4 / 5.5 for 8 h (`ESPRESSO_HOURS`). A weaker drink never replaces a running stronger one. `window.EspressoMod` = `{ enabled, itemId, pending }` (`pending` = the shots of the drink being drunk) |
 | StrongerGems | `StrongerGems.js` | Multiplies the `Value` argument of every `WTE_EquipmentUpgradeSystem` Change* command in the gem group events (found through CE 2885), rounds basic stats to whole numbers, leaves a negative basic stat (the Treasure Gem's Max HP loss) alone, and rewrites the numbers in the gem descriptions from the patched commands. Level ranges: in the `Check lv ...` events the constants compared with V1505 are moved out of reach (999999 / -999999) |
 | FasterModLoader | `FasterModLoader.js` | Wraps `fs.existsSync`: questions about `mods/<enabled mod>/img|audio/...` are answered from a Set built at start-up, everything else goes to disk. Slow frame log (`mods-slow-frames.log` in the game folder): aliases `SceneManager.updateMain`, `Game_Map.update`, `Spriteset_Map.update`, `ImageManager.loadBitmap` and `Game_Interpreter.executeCommand` to record frame time, the logic / sprite split, picture requests, the slowest event command and the running event chain. **This is the way to see what the game does during a freeze**, since an agent cannot see the console |
 
@@ -359,8 +369,7 @@ the mods from this repository (a second argument points it at another mods folde
 - `node dev-tools\simulate_injector.js "<game>"`: builds the injector the way the loader does and syntax-checks it. Shows load order.
 - `test_lessgrind.js` (recipes), `test_lessgrind_events.js` (common event and map patches, prints every changed command),
   `test_lessgrind_coffee.js`, `test_lessgrindhits.js` (prints the swings tables for all three tools),
-  `test_higherdrops.js`, `test_cheapkiosk.js`, `test_espresso.js`, `test_coffeemachines.js` (has a small event
-  interpreter with the engine's branch logic, for running a built event list through every player choice),
+  `test_higherdrops.js`, `test_cheapkiosk.js`, `test_espresso.js`,
   `test_strongergems.js` (prints every gem before and after), `test_fastermodloader.js` (builds a fake game folder
   in the temp directory). `python dev-tools\list_breakables.py` lists every rock, tree and grass template.
   Pattern: load the real JSON, stub the few engine/plugin functions the mod touches (copy their logic from the plugin),

@@ -1,7 +1,7 @@
 {
   "name": "Espresso - three stronger coffees",
   "author": "Anders",
-  "version": "1.3.0",
-  "description": "Adds Espresso (4 Coffee Beans), Double Espresso (5) and Triple Espresso (6), brewed at the Coffee Maker. Each gives a stronger movement speed boost than a Cup of Coffee for 8 hours: walk 4.85 for all three, run 5.0 / 5.1 / 5.2, bike 5.3 / 5.4 / 5.5. The items reuse blank item slots and the game's own Coffee state, so removing the mod leaves nothing broken behind. Edit the CONFIG block in js/plugins/Espresso.js.",
+  "version": "1.4.0",
+  "description": "Adds Espresso (4 Coffee Beans), Double Espresso (5) and Triple Espresso (6), brewed at the Coffee Maker. Each gives a stronger movement speed boost than a Cup of Coffee for 8 hours: walk 4.55 / 4.6 / 4.65, run 5.0 / 5.1 / 5.2, bike 5.3 / 5.4 / 5.5. The items reuse blank item slots and the game's own Coffee state, so removing the mod leaves nothing broken behind. Edit the CONFIG block in js/plugins/Espresso.js.",
   "priority": 60
 }
